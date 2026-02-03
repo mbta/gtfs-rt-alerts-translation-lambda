@@ -74,12 +74,7 @@ mise run run-local https://cdn.mbta.com/realtime/Alerts_enhanced.json --langs es
 
 ## Deployment
 
-Deploy using AWS SAM:
-
-```bash
-sam build
-sam deploy --guided
-```
+Deploy using the provided Terraform module. See [terraform/README.md](terraform/README.md) for details.
 
 ## License
 

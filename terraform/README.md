@@ -19,8 +19,8 @@ module "gtfs_translator" {
   smartling_user_id     = "your-user-id"
   smartling_account_uid = "your-account-uid"
   
-  destination_bucket    = "mbta-gtfs-feeds"
-  destination_path      = "realtime/alerts-translated/"
+  destination_bucket_name = "mbta-gtfs-feeds"
+  destination_path        = "realtime/alerts-translated/"
 
   trigger = {
     type                = "cron"
