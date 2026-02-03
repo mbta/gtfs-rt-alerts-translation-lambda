@@ -13,6 +13,20 @@ from gtfs_translation.core.smartling import SmartlingTranslator
 
 logger = logging.getLogger(__name__)
 s3 = boto3.client("s3")
+secrets = boto3.client("secretsmanager")
+
+
+def resolve_secrets() -> None:
+    if settings.smartling_user_secret_arn and not settings.smartling_user_secret:
+        logger.info(
+            "Fetching Smartling secret from Secrets Manager: %s", settings.smartling_user_secret_arn
+        )
+        resp = secrets.get_secret_value(SecretId=settings.smartling_user_secret_arn)
+        settings.smartling_user_secret = resp["SecretString"]
+
+
+# Fetch secrets once at module load (startup)
+resolve_secrets()
 
 
 def get_s3_parts(url: str) -> tuple[str, str]:
