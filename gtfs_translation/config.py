@@ -1,21 +1,19 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
 
 
-class Settings(BaseSettings):
-    smartling_user_id: str
-    smartling_user_secret: str
-    smartling_account_uid: str
-
-    source_url: str = ""
-    destination_bucket_url: str = ""
-    target_languages: str = "es"  # Comma-separated
-    concurrency_limit: int = 20
+class Settings:
+    def __init__(self) -> None:
+        self.smartling_user_id = os.environ.get("SMARTLING_USER_ID", "")
+        self.smartling_user_secret = os.environ.get("SMARTLING_USER_SECRET", "")
+        self.smartling_account_uid = os.environ.get("SMARTLING_ACCOUNT_UID", "")
+        self.source_url = os.environ.get("SOURCE_URL", "")
+        self.destination_bucket_url = os.environ.get("DESTINATION_BUCKET_URL", "")
+        self.target_languages = os.environ.get("TARGET_LANGUAGES", "es")
+        self.concurrency_limit = int(os.environ.get("CONCURRENCY_LIMIT", "20"))
 
     @property
     def target_lang_list(self) -> list[str]:
         return [lang.strip() for lang in self.target_languages.split(",") if lang.strip()]
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-
-settings = Settings()  # type: ignore[call-arg]
+settings = Settings()
