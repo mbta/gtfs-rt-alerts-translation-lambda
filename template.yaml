@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: GTFS-RT Alerts Translation Lambda
+
+Resources:
+  TranslationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: gtfs_translation.lambda_handler.lambda_handler
+      Runtime: python3.11 # Update to 3.13 if available in target region
+      Timeout: 60
+      MemorySize: 512
+      Environment:
+        Variables:
+          SMARTLING_USER_ID: ""
+          SMARTLING_USER_SECRET: ""
+          SMARTLING_ACCOUNT_UID: ""
+          SOURCE_URL: ""
+          DESTINATION_BUCKET_URL: ""
+          TARGET_LANGUAGES: "es,fr,pt"
+      Policies:
+        - S3ReadPolicy:
+            BucketName: "*" # Refine to specific source bucket
+        - S3WritePolicy:
+            BucketName: "*" # Refine to specific destination bucket

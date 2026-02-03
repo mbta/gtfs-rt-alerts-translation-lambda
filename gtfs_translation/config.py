@@ -3,7 +3,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     smartling_user_id: str
-    smartling_user_secret: str
+    smartling_user_secret: str = ""
+    smartling_user_secret_arn: str = ""
     smartling_account_uid: str
 
     source_url: str = ""

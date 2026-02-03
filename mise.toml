@@ -17,6 +17,25 @@ run = "uv run pytest"
 description = "Run linting and type checking"
 run = "uv run ruff format --check . && uv run ruff check . && uv run mypy ."
 
+[tasks.build]
+description = "Build Lambda deployment package"
+run = """
+rm -rf dist function.zip
+uv export --no-dev --format requirements-txt > requirements.txt
+uv pip install -r requirements.txt --target dist
+cp -r gtfs_translation dist/
+# Use deterministic zipping: 
+# -X: no extra file attributes (UID/GID)
+# -r: recursive
+# -y: preserve symlinks
+# -o: set zip file time to latest file time
+# find ... -exec touch: set all file times to a fixed epoch
+find dist -exec touch -h -t 202601010000 {} +
+cd dist && zip -X -r ../function.zip .
+cd ..
+rm -rf dist requirements.txt
+"""
+
 [tasks.run-local]
 description = "Run translation locally and print to stdout"
 run = "uv run python scripts/run_local.py"
