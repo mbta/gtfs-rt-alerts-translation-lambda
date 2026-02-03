@@ -14,25 +14,17 @@ from gtfs_translation.core.smartling import SmartlingTranslator
 
 async def run_local(source_url: str, target_langs: list[str]) -> None:
     # 1. Fetch source (minimal version for CLI)
-    import boto3
-    import httpx
+    from gtfs_translation.core.fetcher import fetch_source
 
     content: bytes
-    fmt: FeedFormat = "json" if source_url.endswith(".json") else "pb"
+    fmt: FeedFormat
 
-    if source_url.startswith("s3://"):
-        bucket, key = source_url[5:].split("/", 1)
-        s3 = boto3.client("s3")
-        resp = s3.get_object(Bucket=bucket, Key=key)
-        content = resp["Body"].read()
-    elif source_url.startswith("http"):
-        async with httpx.AsyncClient() as client:
-            resp_http = await client.get(source_url)
-            resp_http.raise_for_status()
-            content = resp_http.content
+    if source_url.startswith("s3://") or source_url.startswith("http"):
+        content, fmt = await fetch_source(source_url)
     else:
         with open(source_url, "rb") as f:
             content = f.read()
+        fmt = "json" if source_url.endswith(".json") else "pb"
 
     new_feed = FeedProcessor.parse(content, fmt)
 
