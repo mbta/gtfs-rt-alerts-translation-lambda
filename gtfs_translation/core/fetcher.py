@@ -1,4 +1,6 @@
+import json
 import logging
+from typing import Any
 
 import boto3
 import botocore
@@ -47,17 +49,22 @@ async def fetch_source(url: str) -> tuple[bytes, FeedFormat]:
     return content, fmt
 
 
-async def fetch_old_feed(dest_url: str, fmt: FeedFormat) -> gtfs_realtime_pb2.FeedMessage | None:
+async def fetch_old_feed(
+    dest_url: str, fmt: FeedFormat
+) -> tuple[gtfs_realtime_pb2.FeedMessage | None, dict[str, Any] | None]:
     try:
         bucket, key = get_s3_parts(dest_url)
         resp = s3.get_object(Bucket=bucket, Key=key)
         content: bytes = resp["Body"].read()
-        return FeedProcessor.parse(content, fmt)
+        old_json = None
+        if fmt == "json":
+            old_json = json.loads(content.decode("utf-8"))
+        return FeedProcessor.parse(content, fmt), old_json
     except botocore.exceptions.ClientError as e:
         if e.response["Error"]["Code"] == "404" or e.response["Error"]["Code"] == "NoSuchKey":
             logger.info("Destination feed not found, starting fresh: %s", dest_url)
-            return None
+            return None, None
         raise e
     except Exception:
         logger.exception("Unexpected error fetching old feed from %s", dest_url)
-        return None
+        return None, None

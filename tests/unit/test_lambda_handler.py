@@ -9,7 +9,10 @@ os.environ["SMARTLING_USER_ID"] = "test"
 os.environ["SMARTLING_USER_SECRET"] = "test"
 os.environ["SMARTLING_ACCOUNT_UID"] = "test"
 
-from gtfs_translation.lambda_handler import lambda_handler
+from google.transit import gtfs_realtime_pb2
+
+from gtfs_translation.core.processor import ProcessingMetrics
+from gtfs_translation.lambda_handler import lambda_handler, should_upload
 
 
 def test_lambda_handler_s3_event(mocker: MockerFixture) -> None:
@@ -36,3 +39,43 @@ def test_lambda_handler_same_source_dest(mocker: MockerFixture) -> None:
 
     with pytest.raises(ValueError, match="Source and destination URL are the same"):
         lambda_handler({}, None)
+
+
+def test_should_upload_with_no_old_feed() -> None:
+    new_feed = gtfs_realtime_pb2.FeedMessage()
+    metrics = ProcessingMetrics(strings_translated=0)
+
+    assert should_upload(None, new_feed, metrics) is True
+
+
+def test_should_upload_when_timestamp_changes() -> None:
+    new_feed = gtfs_realtime_pb2.FeedMessage()
+    new_feed.header.timestamp = 200
+    old_feed = gtfs_realtime_pb2.FeedMessage()
+    old_feed.header.timestamp = 100
+
+    metrics = ProcessingMetrics(strings_translated=0)
+
+    assert should_upload(old_feed, new_feed, metrics) is True
+
+
+def test_should_upload_when_no_new_translations() -> None:
+    new_feed = gtfs_realtime_pb2.FeedMessage()
+    new_feed.header.timestamp = 100
+    old_feed = gtfs_realtime_pb2.FeedMessage()
+    old_feed.header.timestamp = 100
+
+    metrics = ProcessingMetrics(strings_translated=0)
+
+    assert should_upload(old_feed, new_feed, metrics) is False
+
+
+def test_should_upload_when_translations_present() -> None:
+    new_feed = gtfs_realtime_pb2.FeedMessage()
+    new_feed.header.timestamp = 100
+    old_feed = gtfs_realtime_pb2.FeedMessage()
+    old_feed.header.timestamp = 100
+
+    metrics = ProcessingMetrics(strings_translated=2)
+
+    assert should_upload(old_feed, new_feed, metrics) is True

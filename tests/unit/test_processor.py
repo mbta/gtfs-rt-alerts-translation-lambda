@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 from google.transit import gtfs_realtime_pb2
 
@@ -146,3 +148,56 @@ async def test_process_feed_empty_strings() -> None:
     assert len(header_trans) == 2
     es_header = next(t.text for t in header_trans if t.language == "es")
     assert es_header == ""
+
+
+@pytest.mark.asyncio
+async def test_process_feed_reuse_enhanced_json_translations() -> None:
+    old_feed = gtfs_realtime_pb2.FeedMessage()
+    new_feed = gtfs_realtime_pb2.FeedMessage()
+
+    old_original_json: dict[str, Any] = {
+        "entity": [
+            {
+                "id": "alert1",
+                "alert": {
+                    "service_effect_text": {
+                        "translation": [
+                            {"language": "en", "text": "ongoing"},
+                            {"language": "es", "text": "en curso"},
+                        ]
+                    }
+                },
+            }
+        ]
+    }
+
+    original_json: dict[str, Any] = {
+        "entity": [
+            {
+                "id": "alert1",
+                "alert": {
+                    "service_effect_text": {"translation": [{"language": "en", "text": "ongoing"}]}
+                },
+            }
+        ]
+    }
+
+    translator = MockTranslator()
+
+    await FeedProcessor.process_feed(
+        new_feed,
+        old_feed,
+        translator,
+        ["es"],
+        original_json=original_json,
+        old_original_json=old_original_json,
+    )
+
+    entity_list = original_json.get("entity", [])
+    if isinstance(entity_list, list) and len(entity_list) > 0:
+        translations = (
+            entity_list[0].get("alert", {}).get("service_effect_text", {}).get("translation", [])
+        )
+        if isinstance(translations, list):
+            es_text = next(t["text"] for t in translations if t["language"] == "es")
+            assert es_text == "en curso"

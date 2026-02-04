@@ -103,6 +103,7 @@ class FeedProcessor:
         target_langs: list[str],
         concurrency_limit: int = 20,
         original_json: dict[str, Any] | None = None,
+        old_original_json: dict[str, Any] | None = None,
     ) -> ProcessingMetrics:
         """
         Translates the feed in-place.
@@ -150,15 +151,31 @@ class FeedProcessor:
 
         # Handle "Enhanced" JSON fields if present
         if original_json:
+            old_entities_json = {}
+            if old_original_json:
+                old_entities_json = {
+                    e.get("id"): e
+                    for e in old_original_json.get("entity", [])
+                    if e.get("id") is not None
+                }
+
             for entity_orig in original_json.get("entity", []):
                 alert_orig = entity_orig.get("alert")
                 if not alert_orig:
                     continue
 
+                old_alert_orig = None
+                entity_id = entity_orig.get("id")
+                if entity_id in old_entities_json:
+                    old_alert_orig = old_entities_json[entity_id].get("alert")
+
                 for field_name in ["service_effect_text", "timeframe_text"]:
                     if field_name in alert_orig:
                         cls._collect_translations_json(
-                            alert_orig[field_name], translation_map, metrics
+                            alert_orig[field_name],
+                            translation_map,
+                            metrics,
+                            old_alert_orig.get(field_name) if old_alert_orig else None,
                         )
 
         # 2. Identify missing translations and batch them
@@ -252,6 +269,7 @@ class FeedProcessor:
         ts_json: dict[str, Any],
         translation_map: dict[str, dict[str, str]],
         metrics: ProcessingMetrics,
+        old_ts_json: dict[str, Any] | None,
     ) -> None:
         english_text = None
         translations = ts_json.get("translation", [])
@@ -265,6 +283,21 @@ class FeedProcessor:
 
         if english_text not in translation_map:
             translation_map[english_text] = {}
+
+        if old_ts_json:
+            old_english_text = None
+            old_translations = old_ts_json.get("translation", [])
+            for t in old_translations:
+                if t.get("language") == "en" or not t.get("language"):
+                    old_english_text = t.get("text", "")
+                    break
+
+            if old_english_text == english_text:
+                for t in old_translations:
+                    lang = t.get("language")
+                    if lang and lang != "en" and lang not in translation_map[english_text]:
+                        translation_map[english_text][lang] = t.get("text", "")
+                        metrics.translations_reused += 1
 
         # Reuse from existing JSON translations if present (often not, but good for consistency)
         for t in translations:
