@@ -179,26 +179,21 @@ class FeedProcessor:
         # 2. Identify missing translations and batch them
         semaphore = asyncio.Semaphore(concurrency_limit)
 
-        async def translate_lang(lang: str, texts_to_translate: list[str]) -> None:
-            if not texts_to_translate:
-                return
-            async with semaphore:
-                translations = await translator.translate_batch(texts_to_translate, lang)
+        # Build a list of unique English strings that need any translation
+        all_needed_english = [
+            eng
+            for eng, existing in translation_map.items()
+            if any(lang not in existing for lang in target_langs) and eng.strip() != ""
+        ]
+
+        if all_needed_english:
+            translations_by_lang = translator.translate_batch(all_needed_english, target_langs)
+            for lang, translations in translations_by_lang.items():
                 metrics.strings_translated += len(translations)
-                for english, translated in zip(texts_to_translate, translations, strict=True):
-                    translation_map[english][lang] = translated
-
-        translation_tasks = []
-        for lang in target_langs:
-            needed_for_lang = [
-                eng
-                for eng, existing in translation_map.items()
-                if lang not in existing and eng.strip() != ""
-            ]
-            if needed_for_lang:
-                translation_tasks.append(translate_lang(lang, needed_for_lang))
-
-        await asyncio.gather(*translation_tasks)
+                for english, translated in zip(all_needed_english, translations, strict=True):
+                    # Only update if it wasn't already in the map (from reuse)
+                    if lang not in translation_map[english]:
+                        translation_map[english][lang] = translated
 
         # 3. Apply translations back to the feed
         # For empty strings, we just return an empty string for the target language
