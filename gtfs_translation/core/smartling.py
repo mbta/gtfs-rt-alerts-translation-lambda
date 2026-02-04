@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 import time
 
 import httpx
@@ -42,18 +43,51 @@ class SmartlingTranslator(Translator):
         """
         Translates a batch of texts using Smartling MT API.
         Retry on 401 once (token expiry race condition).
+        Retry on 429 with randomized exponential backoff (1s to 30s).
         """
         if not texts:
             return []
 
-        try:
-            return await self._do_translate_batch(texts, target_lang)
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 401:
-                # Force refresh
-                self._token = None
+        logging.info(
+            "Smartling translate_batch request: target_lang=%s, count=%d, texts=%s",
+            target_lang,
+            len(texts),
+            texts,
+        )
+
+        backoff_seconds = 1.0
+        max_backoff = 30.0
+        max_attempts = 5
+        last_error: httpx.HTTPStatusError | None = None
+
+        for attempt in range(max_attempts):
+            try:
                 return await self._do_translate_batch(texts, target_lang)
-            raise e
+            except httpx.HTTPStatusError as e:
+                last_error = e
+                status_code = e.response.status_code
+                if status_code == 401:
+                    # Force refresh
+                    self._token = None
+                    return await self._do_translate_batch(texts, target_lang)
+                if status_code == 429 and attempt < max_attempts - 1:
+                    sleep_for = random.uniform(0, backoff_seconds)
+                    logging.warning(
+                        "Smartling MT API rate limited (429). Backing off for %.2fs.", sleep_for
+                    )
+                    await asyncio.sleep(sleep_for)
+                    backoff_seconds = min(max_backoff, backoff_seconds * 2)
+                    continue
+                raise e
+
+        if last_error is not None:
+            raise httpx.HTTPStatusError(
+                "Smartling MT API rate limit retry attempts exceeded",
+                request=last_error.request,
+                response=last_error.response,
+            )
+
+        raise RuntimeError("Smartling MT API retry loop exited unexpectedly")
 
     async def _do_translate_batch(self, texts: list[str], target_lang: str) -> list[str]:
         token = await self._get_token()
