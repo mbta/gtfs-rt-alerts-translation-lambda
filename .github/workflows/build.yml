@@ -34,7 +34,7 @@ jobs:
           if git diff --quiet function.zip; then
             echo "No changes in function.zip to commit"
           else
-            git add function.zip
+            git add -f function.zip
             git commit -m "chore: update function.zip [skip ci]"
             git push
           fi
