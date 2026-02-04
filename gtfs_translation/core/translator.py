@@ -3,17 +3,21 @@ from abc import ABC, abstractmethod
 
 class Translator(ABC):
     @abstractmethod
-    async def translate_batch(self, texts: list[str], target_lang: str) -> list[str]:
+    def translate_batch(self, texts: list[str], target_langs: list[str]) -> dict[str, list[str]]:
         """
-        Translate multiple strings into the target language.
-        Returns translations in the same order as input texts.
+        Translate multiple strings into multiple target languages.
+        Returns a mapping from language code to a list of translations
+        in the same order as input texts.
         """
         pass
 
 
 class MockTranslator(Translator):
-    async def translate_batch(self, texts: list[str], target_lang: str) -> list[str]:
+    def translate_batch(self, texts: list[str], target_langs: list[str]) -> dict[str, list[str]]:
         """
         Appends the language code to the text for testing.
         """
-        return [f"[{target_lang}] {text}" for text in texts]
+        return {
+            lang: [f"[{lang}] {text}" for text in texts]
+            for lang in target_langs
+        }
