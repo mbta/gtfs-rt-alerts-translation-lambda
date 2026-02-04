@@ -43,6 +43,7 @@ When testing the infrastructure or setting up temporary staging environments, AW
 - [ ] `tofu -destroy` successfully removes all resources including the S3 bucket even if it contains translated feed files.
 - [x] `.gitignore` updated to ignore `*.tfvars` and `*.tfvars.json` in `terraform/example/`.
 - [x] Lambda policy includes `s3:ListBucket` on the destination bucket.
+- [x] Module supports configurable log level via `log_level`, defaulting to INFO and set to DEBUG in the example.
 
 ## MVP
 

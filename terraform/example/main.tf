@@ -55,6 +55,7 @@ module "gtfs_translator" {
 
   smartling_user_id     = var.smartling_user_id
   smartling_account_uid = var.smartling_account_uid
+  log_level             = "INFO"
   tags                  = local.tags
 
   trigger = {
