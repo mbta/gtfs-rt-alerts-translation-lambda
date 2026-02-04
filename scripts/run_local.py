@@ -46,7 +46,7 @@ async def run_local(source_url: str, target_langs: list[str]) -> None:
             translator,
             target_langs,
             concurrency_limit=settings.concurrency_limit,
-            original_json=original_json,
+            source_json=original_json,
         )
 
         # 3. Serialize and print to stdout

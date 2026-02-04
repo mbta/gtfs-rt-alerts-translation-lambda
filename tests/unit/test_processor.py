@@ -155,7 +155,7 @@ async def test_process_feed_reuse_enhanced_json_translations() -> None:
     old_feed = gtfs_realtime_pb2.FeedMessage()
     new_feed = gtfs_realtime_pb2.FeedMessage()
 
-    old_original_json: dict[str, Any] = {
+    dest_json: dict[str, Any] = {
         "entity": [
             {
                 "id": "alert1",
@@ -171,7 +171,7 @@ async def test_process_feed_reuse_enhanced_json_translations() -> None:
         ]
     }
 
-    original_json: dict[str, Any] = {
+    source_json: dict[str, Any] = {
         "entity": [
             {
                 "id": "alert1",
@@ -189,11 +189,11 @@ async def test_process_feed_reuse_enhanced_json_translations() -> None:
         old_feed,
         translator,
         ["es"],
-        original_json=original_json,
-        old_original_json=old_original_json,
+        source_json=source_json,
+        dest_json=dest_json,
     )
 
-    entity_list = original_json.get("entity", [])
+    entity_list = source_json.get("entity", [])
     if isinstance(entity_list, list) and len(entity_list) > 0:
         translations = (
             entity_list[0].get("alert", {}).get("service_effect_text", {}).get("translation", [])

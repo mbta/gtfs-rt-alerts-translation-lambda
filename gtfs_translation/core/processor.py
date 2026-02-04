@@ -102,8 +102,8 @@ class FeedProcessor:
         translator: "Translator",
         target_langs: list[str],
         concurrency_limit: int = 20,
-        original_json: dict[str, Any] | None = None,
-        old_original_json: dict[str, Any] | None = None,
+        source_json: dict[str, Any] | None = None,
+        dest_json: dict[str, Any] | None = None,
     ) -> ProcessingMetrics:
         """
         Translates the feed in-place.
@@ -150,16 +150,14 @@ class FeedProcessor:
                 cls._process_url(alert.url, target_langs)
 
         # Handle "Enhanced" JSON fields if present
-        if original_json:
+        if source_json:
             old_entities_json = {}
-            if old_original_json:
+            if dest_json:
                 old_entities_json = {
-                    e.get("id"): e
-                    for e in old_original_json.get("entity", [])
-                    if e.get("id") is not None
+                    e.get("id"): e for e in dest_json.get("entity", []) if e.get("id") is not None
                 }
 
-            for entity_orig in original_json.get("entity", []):
+            for entity_orig in source_json.get("entity", []):
                 alert_orig = entity_orig.get("alert")
                 if not alert_orig:
                     continue
@@ -226,8 +224,8 @@ class FeedProcessor:
                 cls._apply_translations(ts, translation_map, target_langs)
 
         # Apply to Enhanced JSON
-        if original_json:
-            for entity_orig in original_json.get("entity", []):
+        if source_json:
+            for entity_orig in source_json.get("entity", []):
                 alert_orig = entity_orig.get("alert")
                 if not alert_orig:
                     continue

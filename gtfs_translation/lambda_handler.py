@@ -3,11 +3,15 @@ import logging
 from typing import Any
 
 import boto3
-
-from gtfs_translation.config import settings
 from google.transit import gtfs_realtime_pb2
 
-from gtfs_translation.core.fetcher import fetch_old_feed, fetch_source, get_s3_parts, resolve_secrets
+from gtfs_translation.config import settings
+from gtfs_translation.core.fetcher import (
+    fetch_old_feed,
+    fetch_source,
+    get_s3_parts,
+    resolve_secrets,
+)
 from gtfs_translation.core.processor import FeedProcessor, ProcessingMetrics
 from gtfs_translation.core.smartling import SmartlingTranslator
 
@@ -47,14 +51,14 @@ async def run_translation(source_url: str, dest_url: str) -> None:
     new_feed = FeedProcessor.parse(content, fmt)
 
     # We keep the original JSON for merging back non-standard fields during serialization
-    original_json = None
+    source_json = None
     if fmt == "json":
         import json
 
-        original_json = json.loads(content.decode("utf-8"))
+        source_json = json.loads(content.decode("utf-8"))
 
     # 2. Fetch old feed for diffing
-    old_feed, old_original_json = await fetch_old_feed(dest_url, fmt)
+    old_feed, dest_json = await fetch_old_feed(dest_url, fmt)
 
     # 3. Translate
     translator = SmartlingTranslator(
@@ -68,8 +72,8 @@ async def run_translation(source_url: str, dest_url: str) -> None:
             translator,
             settings.target_lang_list,
             concurrency_limit=settings.concurrency_limit,
-            source_json=original_json,
-            dest_json=old_original_json,
+            source_json=source_json,
+            dest_json=dest_json,
         )
 
         logger.log(NOTICE_LEVEL, "Translation metrics: %s", metrics.to_dict())
@@ -79,7 +83,7 @@ async def run_translation(source_url: str, dest_url: str) -> None:
             return
 
         # 4. Upload
-        translated_content = FeedProcessor.serialize(new_feed, fmt, original_json=original_json)
+        translated_content = FeedProcessor.serialize(new_feed, fmt, original_json=source_json)
         bucket, key = get_s3_parts(dest_url)
         s3.put_object(Bucket=bucket, Key=key, Body=translated_content)
 
