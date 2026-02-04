@@ -11,10 +11,9 @@ An AWS Lambda function that translates GTFS-Realtime ServiceAlerts feeds from En
 - **URL Localization**: Appends `?locale={lang}` to alert URLs for non-English translations.
 
 ## Prerequisites
-
-- Python 3.13+
-- [uv](https://docs.astral.sh/uv/)
-- [mise](https://mise.jdx.dev/) (optional, for task running)
+- [mise](https://mise.jdx.dev/)
+- [uv](https://docs.astral.sh/uv/) (installed by Mise)
+- Python 3.13+ (installed by Uv)
 
 ## Configuration
 
@@ -43,6 +42,12 @@ mise run setup
 mise run test
 ```
 
+### Formatting
+
+```bash
+mise run format
+```
+
 ### Linting & Type Checking
 
 ```bash
@@ -66,8 +71,8 @@ mise run run-local https://cdn.mbta.com/realtime/Alerts_enhanced.json --langs es
 ## How it Works
 
 1. **Trigger**: The Lambda starts via S3 Event or Schedule.
-2. **Fetch**: It downloads the "New" feed from the source and the "Old" translated feed from the destination.
-3. **Diff**: It compares every Alert. If the English text matches an entry in the "Old" feed, it reuses the existing translations.
+2. **Fetch**: It downloads the "source" feed from the source and the "dest" translated feed from the destination.
+3. **Diff**: It compares every Alert. If the English text matches an entry in the "dest" feed, it reuses the existing translations.
 4. **Translate**: New or changed strings are sent to Smartling MT API concurrently.
 5. **Serialize**: The resulting GTFS object is serialized back to the original format.
 6. **Upload**: The final feed is saved back to S3.
