@@ -87,6 +87,8 @@ Required Environment Variables:
 
 ## Workflow Rules
 
+- **Pre-flight Checks:** ALWAYS run `mise run format` and `mise run check` before finishing a task to ensure code quality and type safety.
 - **Run Tests:** Always run `mise run test` and ensure all tests pass before completing a task.
 - **Commit:** Commit changes with a descriptive message after completing a task or logical unit of work. Use **Conventional Commits** format (e.g., `feat: ...`, `fix: ...`, `chore: ...`).
 - **Terraform State:** Never remove or delete `.tfstate` files if they exist in the repo.
+- **Deployment Artifact:** `function.zip` is required for deployment; do not delete or ignore it.
