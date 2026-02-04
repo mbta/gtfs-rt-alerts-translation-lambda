@@ -33,6 +33,30 @@ def test_lambda_handler_s3_event(mocker: MockerFixture) -> None:
     mock_run.assert_called_once_with("s3://source-bucket/alerts.pb", "s3://dest/feed.pb")
 
 
+def test_lambda_handler_s3_event_decodes_key(mocker: MockerFixture) -> None:
+    mocker.patch("gtfs_translation.config.settings.destination_bucket_url", "s3://dest/feed.pb")
+    mocker.patch("gtfs_translation.config.settings.target_languages", "es")
+
+    mock_run = mocker.patch("gtfs_translation.lambda_handler.run_translation")
+
+    event: dict[str, Any] = {
+        "Records": [
+            {
+                "s3": {
+                    "bucket": {"name": "source-bucket"},
+                    "object": {"key": "alerts/Service%20Alert%2BAM.pb"},
+                }
+            }
+        ]
+    }
+
+    lambda_handler(event, None)
+
+    mock_run.assert_called_once_with(
+        "s3://source-bucket/alerts/Service Alert+AM.pb", "s3://dest/feed.pb"
+    )
+
+
 def test_lambda_handler_same_source_dest(mocker: MockerFixture) -> None:
     mocker.patch("gtfs_translation.config.settings.source_url", "s3://same/path")
     mocker.patch("gtfs_translation.config.settings.destination_bucket_url", "s3://same/path")

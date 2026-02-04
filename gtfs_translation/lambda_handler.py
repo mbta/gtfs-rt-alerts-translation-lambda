@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from typing import Any
+from urllib.parse import unquote_plus
 
 import boto3
 from google.transit import gtfs_realtime_pb2
@@ -85,7 +86,13 @@ async def run_translation(source_url: str, dest_url: str) -> None:
         # 4. Upload
         translated_content = FeedProcessor.serialize(new_feed, fmt, original_json=source_json)
         bucket, key = get_s3_parts(dest_url)
-        s3.put_object(Bucket=bucket, Key=key, Body=translated_content)
+        content_type = "application/json" if fmt == "json" else "application/x-protobuf"
+        s3.put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=translated_content,
+            ContentType=content_type,
+        )
 
     finally:
         await translator.close()
@@ -105,7 +112,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         record = event["Records"][0]
         if "s3" in record:
             bucket = record["s3"]["bucket"]["name"]
-            key = record["s3"]["object"]["key"]
+            key = unquote_plus(record["s3"]["object"]["key"])
             source_url = f"s3://{bucket}/{key}"
 
     if not source_url:
