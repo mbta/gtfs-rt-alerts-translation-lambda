@@ -110,6 +110,7 @@ resource "aws_lambda_function" "translation_function" {
       SOURCE_URL                = var.trigger.source_url != null ? var.trigger.source_url : ""
       DESTINATION_BUCKET_URL    = "s3://${var.destination_bucket_name}/${var.destination_path}"
       TARGET_LANGUAGES          = join(",", var.target_languages)
+      LOG_LEVEL                 = var.log_level
     }
   }
 

@@ -57,6 +57,12 @@ variable "trigger" {
   }
 }
 
+variable "log_level" {
+  description = "Lambda log level"
+  type        = string
+  default     = "NOTICE"
+}
+
 variable "lambda_timeout" {
   description = "Lambda timeout in seconds"
   type        = number
