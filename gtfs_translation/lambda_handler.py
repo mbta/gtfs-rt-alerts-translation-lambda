@@ -13,6 +13,9 @@ from gtfs_translation.core.fetcher import (
 )
 from gtfs_translation.core.processor import FeedProcessor
 
+NOTICE_LEVEL = 25
+logging.addLevelName(NOTICE_LEVEL, "NOTICE")
+
 logger = logging.getLogger(__name__)
 s3 = boto3.client("s3")
 
@@ -55,7 +58,7 @@ async def run_translation(source_url: str, dest_url: str) -> None:
             original_json=original_json,
         )
 
-        logger.info("Translation metrics: %s", metrics.to_dict())
+        logger.log(NOTICE_LEVEL, "Translation metrics: %s", metrics.to_dict())
 
         # 4. Upload
         translated_content = FeedProcessor.serialize(new_feed, fmt, original_json=original_json)
@@ -67,6 +70,11 @@ async def run_translation(source_url: str, dest_url: str) -> None:
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    root_logger = logging.getLogger()
+    root_logger.setLevel(settings.log_level)
+    if not root_logger.handlers:
+        root_logger.addHandler(logging.StreamHandler())
+
     # Hybrid Trigger Logic
     source_url = settings.source_url
 
