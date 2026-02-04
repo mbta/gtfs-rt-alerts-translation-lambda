@@ -15,12 +15,8 @@ locals {
   }
 }
 
-resource "random_id" "bucket_suffix" {
-  byte_length = 4
-}
-
 resource "aws_s3_bucket" "test_bucket" {
-  bucket        = "mbta-gtfs-translation-example-${random_id.bucket_suffix.hex}"
+  bucket_prefix = "mbta-gtfs-translation-example-"
   force_destroy = true
   tags          = local.tags
 }
