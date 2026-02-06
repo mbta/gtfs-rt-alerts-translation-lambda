@@ -51,6 +51,7 @@ module "gtfs_translator" {
 
   smartling_user_id     = var.smartling_user_id
   smartling_account_uid = var.smartling_account_uid
+  smartling_project_id  = var.smartling_project_id
   log_level             = "INFO"
   tags                  = local.tags
 
@@ -72,6 +73,11 @@ variable "smartling_user_id" {
 
 variable "smartling_account_uid" {
   type = string
+}
+
+variable "smartling_project_id" {
+  type    = string
+  default = ""
 }
 
 variable "smartling_user_secret" {
