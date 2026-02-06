@@ -43,7 +43,7 @@ async def test_smartling_auth_caching(respx_mock: Any) -> None:
     assert auth_route.call_count == 1  # Still 1
     assert trans_route.call_count == 2
 
-    await translator.close()
+    translator.close()
 
 
 @pytest.mark.asyncio
@@ -84,7 +84,7 @@ async def test_smartling_auth_retry_on_401(respx_mock: Any) -> None:
     assert res == {"es": ["Retry Success"]}
     assert trans_route.call_count == 2
 
-    await translator.close()
+    translator.close()
 
 @pytest.mark.asyncio
 async def test_smartling_file_translator(respx_mock: Any) -> None:
@@ -130,4 +130,4 @@ async def test_smartling_file_translator(respx_mock: Any) -> None:
     assert status_route.call_count == 2
     assert dl_route.call_count == 1
 
-    await translator.close()
+    translator.close()

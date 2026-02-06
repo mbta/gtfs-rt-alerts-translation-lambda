@@ -12,7 +12,7 @@ from gtfs_translation.core.processor import FeedFormat, FeedProcessor
 from gtfs_translation.core.smartling import SmartlingTranslator
 
 
-async def run_local(source_url: str, target_langs: list[str]) -> None:
+def run_local(source_url: str, target_langs: list[str]) -> None:
     # 1. Fetch source (minimal version for CLI)
     import boto3
     import httpx
@@ -26,8 +26,8 @@ async def run_local(source_url: str, target_langs: list[str]) -> None:
         resp = s3.get_object(Bucket=bucket, Key=key)
         content = resp["Body"].read()
     elif source_url.startswith("http"):
-        async with httpx.AsyncClient() as client:
-            resp_http = await client.get(source_url)
+        with httpx.Client() as client:
+            resp_http = client.get(source_url)
             resp_http.raise_for_status()
             content = resp_http.content
     else:
@@ -48,7 +48,7 @@ async def run_local(source_url: str, target_langs: list[str]) -> None:
     )
 
     try:
-        metrics = await FeedProcessor.process_feed(
+        metrics = FeedProcessor.process_feed(
             new_feed,
             None,
             translator,
@@ -65,7 +65,7 @@ async def run_local(source_url: str, target_langs: list[str]) -> None:
         print(f"Metrics: {metrics.to_dict()}", file=sys.stderr)
 
     finally:
-        await translator.close()
+        translator.close()
 
 
 if __name__ == "__main__":
@@ -79,4 +79,4 @@ if __name__ == "__main__":
     # We need settings for Smartling, but we can override source/dest if needed
     # Settings are already loaded from env
 
-    asyncio.run(run_local(args.source_url, langs))
+    run_local(args.source_url, langs)

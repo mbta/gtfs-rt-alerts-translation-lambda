@@ -95,7 +95,7 @@ class FeedProcessor:
                         alert[k] = v
 
     @classmethod
-    async def process_feed(
+    def process_feed(
         cls,
         feed: gtfs_realtime_pb2.FeedMessage,
         old_feed: gtfs_realtime_pb2.FeedMessage | None,

@@ -150,7 +150,7 @@ async def run_translation(source_url: str, dest_url: str) -> None:
         )
 
     finally:
-        await translator.close()
+        translator.close()
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
