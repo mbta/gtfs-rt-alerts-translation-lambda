@@ -1,3 +1,9 @@
+terraform {
+  backend "local" {
+    path = "/tmp/gtfs-alerts-translation-lambda.tfstate"
+  }
+}
+
 provider "aws" {
   region = "us-east-2"
 }
