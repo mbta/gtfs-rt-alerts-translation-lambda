@@ -10,7 +10,10 @@ from google.transit import gtfs_realtime_pb2
 
 from gtfs_translation.config import settings
 from gtfs_translation.core.processor import FeedFormat, FeedProcessor, ProcessingMetrics
-from gtfs_translation.core.smartling import SmartlingFileTranslator
+from gtfs_translation.core.smartling import (
+    SmartlingJobBatchesTranslator,
+    SmartlingTranslator,
+)
 
 NOTICE_LEVEL = 25
 logging.addLevelName(NOTICE_LEVEL, "NOTICE")
@@ -117,9 +120,20 @@ async def run_translation(source_url: str, dest_url: str) -> None:
     old_feed, dest_json = await fetch_old_feed(dest_url, fmt)
 
     # 3. Translate
-    translator = SmartlingFileTranslator(
-        settings.smartling_user_id, settings.smartling_user_secret, settings.smartling_account_uid
-    )
+    translator: SmartlingTranslator
+    if settings.smartling_project_id:
+        translator = SmartlingJobBatchesTranslator(
+            settings.smartling_user_id,
+            settings.smartling_user_secret,
+            settings.smartling_project_id,
+            source_url,
+        )
+    else:
+        translator = SmartlingTranslator(
+            settings.smartling_user_id,
+            settings.smartling_user_secret,
+            settings.smartling_account_uid,
+        )
 
     try:
         metrics = await FeedProcessor.process_feed(
@@ -150,7 +164,7 @@ async def run_translation(source_url: str, dest_url: str) -> None:
         )
 
     finally:
-        translator.close()
+        await translator.close()
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:

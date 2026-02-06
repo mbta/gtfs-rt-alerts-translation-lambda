@@ -95,7 +95,7 @@ class FeedProcessor:
                         alert[k] = v
 
     @classmethod
-    def process_feed(
+    async def process_feed(
         cls,
         feed: gtfs_realtime_pb2.FeedMessage,
         old_feed: gtfs_realtime_pb2.FeedMessage | None,
@@ -187,13 +187,16 @@ class FeedProcessor:
         ]
 
         if all_needed_english:
-            translations_by_lang = translator.translate_batch(all_needed_english, target_langs)
-            for lang, translations in translations_by_lang.items():
-                metrics.strings_translated += len(translations)
-                for english, translated in zip(all_needed_english, translations, strict=True):
-                    # Only update if it wasn't already in the map (from reuse)
-                    if lang not in translation_map[english]:
-                        translation_map[english][lang] = translated
+            async with semaphore:
+                translations_by_lang = await translator.translate_batch(
+                    all_needed_english, target_langs
+                )
+                for lang, translations in translations_by_lang.items():
+                    metrics.strings_translated += len(translations)
+                    for english, translated in zip(all_needed_english, translations, strict=True):
+                        # Only update if it wasn't already in the map (from reuse)
+                        if lang not in translation_map[english]:
+                            translation_map[english][lang] = translated
 
         # 3. Apply translations back to the feed
         # For empty strings, we just return an empty string for the target language

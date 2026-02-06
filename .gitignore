@@ -212,7 +212,7 @@ requirements_filtered.txt
 # Terraform example secrets
 terraform/example/*.tfvars
 terraform/example/*.tfvars.json
-/terraform/example/.terraform
-/terraform/example/.terraform.lock.hcl
+.terraform/
 terraform.tfstate
 terraform.tfstate.backup
+.terraform.lock.hcl
