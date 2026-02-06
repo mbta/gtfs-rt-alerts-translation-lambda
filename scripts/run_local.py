@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import os
 import sys
 
@@ -5,11 +7,14 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import argparse
-import asyncio
 
 from gtfs_translation.config import settings
 from gtfs_translation.core.processor import FeedFormat, FeedProcessor
-from gtfs_translation.core.smartling import SmartlingTranslator
+from gtfs_translation.core.smartling import (
+    SmartlingFileTranslator,
+    SmartlingJobBatchesTranslator,
+    SmartlingTranslator,
+)
 
 
 async def run_local(source_url: str, target_langs: list[str]) -> None:
@@ -35,9 +40,20 @@ async def run_local(source_url: str, target_langs: list[str]) -> None:
         original_json = json.loads(content.decode("utf-8"))
 
     # 2. Translate (no old feed/caching for local test run usually)
-    translator = SmartlingTranslator(
-        settings.smartling_user_id, settings.smartling_user_secret, settings.smartling_account_uid
-    )
+    translator: SmartlingTranslator
+    if settings.smartling_project_id:
+        translator = SmartlingJobBatchesTranslator(
+            settings.smartling_user_id,
+            settings.smartling_user_secret,
+            settings.smartling_project_id,
+            source_url,
+        )
+    else:
+        translator = SmartlingFileTranslator(
+            settings.smartling_user_id,
+            settings.smartling_user_secret,
+            settings.smartling_account_uid,
+        )
 
     try:
         metrics = await FeedProcessor.process_feed(
@@ -65,6 +81,9 @@ if __name__ == "__main__":
     parser.add_argument("source_url", help="URL or local path to GTFS feed")
     parser.add_argument("--langs", default="es", help="Comma-separated target languages")
     args = parser.parse_args()
+
+    # Configure logging to stderr
+    logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 
     langs = [lang.strip() for lang in args.langs.split(",")]
 

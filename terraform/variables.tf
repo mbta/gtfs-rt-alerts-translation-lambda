@@ -18,6 +18,13 @@ variable "smartling_user_id" {
 variable "smartling_account_uid" {
   description = "Smartling Account UID"
   type        = string
+  default     = ""
+}
+
+variable "smartling_project_id" {
+  description = "Smartling Project ID"
+  type        = string
+  default     = ""
 }
 
 variable "destination_bucket_name" {
