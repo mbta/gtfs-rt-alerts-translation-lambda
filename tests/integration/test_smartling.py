@@ -3,7 +3,11 @@ from typing import Any
 import httpx
 import pytest
 
-from gtfs_translation.core.smartling import SmartlingTranslator
+from gtfs_translation.core.smartling import (
+    SmartlingFileTranslator,
+    SmartlingJobBatchesTranslator,
+    SmartlingTranslator,
+)
 
 
 @pytest.mark.asyncio
@@ -32,13 +36,13 @@ async def test_smartling_auth_caching(respx_mock: Any) -> None:
     translator = SmartlingTranslator("user", "secret", "acc123")
 
     # First call: Auth + Translate
-    res1 = translator.translate_batch(["Hello"], ["es"])
+    res1 = await translator.translate_batch(["Hello"], ["es"])
     assert res1 == {"es": ["Hola"]}
     assert auth_route.call_count == 1
     assert trans_route.call_count == 1
 
     # Second call: Should use cached token
-    res2 = translator.translate_batch(["Hello"], ["es"])
+    res2 = await translator.translate_batch(["Hello"], ["es"])
     assert res2 == {"es": ["Hola"]}
     assert auth_route.call_count == 1  # Still 1
     assert trans_route.call_count == 2
@@ -80,16 +84,58 @@ async def test_smartling_auth_retry_on_401(respx_mock: Any) -> None:
     translator._token = "stale"
     translator._token_expiry = 9999999999
 
-    res = translator.translate_batch(["Hello"], ["es"])
+    res = await translator.translate_batch(["Hello"], ["es"])
     assert res == {"es": ["Retry Success"]}
     assert trans_route.call_count == 2
 
     await translator.close()
 
+
+@pytest.mark.asyncio
+async def test_smartling_job_batches_translator(respx_mock: Any) -> None:
+    # Auth
+    respx_mock.post("https://api.smartling.com/auth-api/v2/authenticate").mock(
+        return_value=httpx.Response(
+            200, json={"response": {"data": {"accessToken": "test-token", "expiresIn": 3600}}}
+        )
+    )
+
+    # Job
+    respx_mock.post("https://api.smartling.com/job-batches-api/v2/projects/proj123/jobs").mock(
+        return_value=httpx.Response(
+            200, json={"response": {"data": {"translationJobUid": "job123"}}}
+        )
+    )
+
+    # Batch
+    respx_mock.post("https://api.smartling.com/job-batches-api/v2/projects/proj123/batches").mock(
+        return_value=httpx.Response(200, json={"response": {"data": {"batchUid": "batch123"}}})
+    )
+
+    # Upload
+    respx_mock.post(
+        "https://api.smartling.com/job-batches-api/v2/projects/proj123/batches/batch123/file"
+    ).mock(return_value=httpx.Response(202, json={"response": {"code": "ACCEPTED"}}))
+
+    # Status
+    respx_mock.get(
+        "https://api.smartling.com/job-batches-api/v2/projects/proj123/batches/batch123"
+    ).mock(return_value=httpx.Response(200, json={"response": {"data": {"status": "COMPLETED"}}}))
+
+    # Download
+    respx_mock.get("https://api.smartling.com/files-api/v2/projects/proj123/locales/es/file").mock(
+        return_value=httpx.Response(200, json=["Hola"])
+    )
+
+    translator = SmartlingJobBatchesTranslator("user", "secret", "proj123", "s3://bucket/key.json")
+    res = await translator.translate_batch(["Hello"], ["es"])
+
+    assert res == {"es": ["Hola"]}
+    await translator.close()
+
+
 @pytest.mark.asyncio
 async def test_smartling_file_translator(respx_mock: Any) -> None:
-    from gtfs_translation.core.smartling import SmartlingFileTranslator
-
     # Mock auth endpoint
     respx_mock.post("https://api.smartling.com/auth-api/v2/authenticate").mock(
         return_value=httpx.Response(
@@ -122,7 +168,7 @@ async def test_smartling_file_translator(respx_mock: Any) -> None:
     ).mock(return_value=httpx.Response(200, json=["Hola", "Mundo"]))
 
     translator = SmartlingFileTranslator("user", "secret", "acc123")
-    res = translator.translate_batch(["Hello", "World"], ["es"])
+    res = await translator.translate_batch(["Hello", "World"], ["es"])
 
     assert res == {"es": ["Hola", "Mundo"]}
     assert upload_route.call_count == 1
