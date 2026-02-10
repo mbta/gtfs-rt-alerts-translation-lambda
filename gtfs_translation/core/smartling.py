@@ -152,11 +152,6 @@ class SmartlingJobBatchesTranslator(SmartlingTranslator):
     ) -> dict[str, list[str]]:
         """
         Translates a batch of texts using Smartling Job Batches V2 API.
-        1. Get or create Job
-        2. Create Batch
-        3. Upload file to Batch
-        4. Poll Batch for status
-        5. Download translated files
         """
         if not texts or not target_langs:
             return {lang: [] for lang in target_langs}
@@ -164,7 +159,17 @@ class SmartlingJobBatchesTranslator(SmartlingTranslator):
         token = await self._get_token()
         headers = {"Authorization": f"Bearer {token}"}
 
-        # 1. Get or create Job
+        job_uid = await self._get_or_create_job(headers, target_langs)
+        batch_uid = await self._create_batch(headers, job_uid)
+        await self._upload_file_to_batch(headers, batch_uid, texts, target_langs)
+        await self._poll_batch_status(headers, batch_uid)
+
+        results = await asyncio.gather(
+            *[self._download_job_batch_translation(headers, lang) for lang in target_langs]
+        )
+        return dict(zip(target_langs, results, strict=True))
+
+    async def _get_or_create_job(self, headers: dict[str, str], target_langs: list[str]) -> str:
         job_url = f"https://api.smartling.com/job-batches-api/v2/projects/{self.project_id}/jobs"
         job_payload = {
             "nameTemplate": "GTFS Alerts Translation",
@@ -174,9 +179,10 @@ class SmartlingJobBatchesTranslator(SmartlingTranslator):
         }
         resp = await self.client.post(job_url, headers=headers, json=job_payload)
         resp.raise_for_status()
-        job_uid = resp.json()["response"]["data"]["translationJobUid"]
+        res: str = resp.json()["response"]["data"]["translationJobUid"]
+        return res
 
-        # 2. Create Batch
+    async def _create_batch(self, headers: dict[str, str], job_uid: str) -> str:
         batch_url = (
             f"https://api.smartling.com/job-batches-api/v2/projects/{self.project_id}/batches"
         )
@@ -187,44 +193,32 @@ class SmartlingJobBatchesTranslator(SmartlingTranslator):
         }
         resp = await self.client.post(batch_url, headers=headers, json=batch_payload)
         resp.raise_for_status()
-        batch_uid = resp.json()["response"]["data"]["batchUid"]
+        res: str = resp.json()["response"]["data"]["batchUid"]
+        return res
 
-        # 3. Upload file to Batch
+    async def _upload_file_to_batch(
+        self, headers: dict[str, str], batch_uid: str, texts: list[str], target_langs: list[str]
+    ) -> None:
         upload_url = f"https://api.smartling.com/job-batches-api/v2/projects/{self.project_id}/batches/{batch_uid}/file"
         file_content = json.dumps(texts).encode("utf-8")
         files = {
             "file": ("strings.json", file_content, "application/json"),
         }
-        # Multi-part form data
         data = {
             "fileUri": self.source_uri,
             "fileType": "json",
         }
         # Multi-value field for localeIdsToAuthorize[]
         multi_data = [("localeIdsToAuthorize[]", lang) for lang in target_langs]
-
-        # Use httpx.Request to build multipart correctly if needed, or just pass everything to post
-        # httpx handles 'data' as form fields and 'files' as files.
-        # We MUST pass multi_data as a list of tuples to handle multiple keys with same name.
-
-        # WORKAROUND: For multipart in AsyncClient with string/bytes,
-        # it seems we need to use 'content' for the body if we want it fully async,
-        # OR just accept that it might be sync for multipart.
-        # But wait, httpx IS supposed to handle this.
-        # Let's try passing 'files' but putting all parameters in 'data' as strings.
-
         form_data = list(data.items()) + multi_data
 
         # If we have both data and files, httpx uses multipart/form-data.
-        # Let's try to just use post without data= and use files for everything?
-        # Smartling expects them as form fields.
-
         resp = await self.client.post(
             upload_url, headers=headers, files={**files, **{k: (None, v) for k, v in form_data}}
         )
         resp.raise_for_status()
 
-        # 4. Poll Batch for status
+    async def _poll_batch_status(self, headers: dict[str, str], batch_uid: str) -> None:
         status_url = f"https://api.smartling.com/job-batches-api/v2/projects/{self.project_id}/batches/{batch_uid}"
         while True:
             resp = await self.client.get(status_url, headers=headers)
@@ -238,25 +232,22 @@ class SmartlingJobBatchesTranslator(SmartlingTranslator):
                 raise RuntimeError(f"Smartling Job Batch failed: {batch_data}")
             await asyncio.sleep(1)
 
-        # 5. Download translated files
-        async def download_lang(lang: str) -> list[str]:
-            dl_url = (
-                f"https://api.smartling.com/files-api/v2/projects/{self.project_id}/locales/"
-                f"{lang}/file"
+    async def _download_job_batch_translation(
+        self, headers: dict[str, str], lang: str
+    ) -> list[str]:
+        dl_url = (
+            f"https://api.smartling.com/files-api/v2/projects/{self.project_id}/locales/{lang}/file"
+        )
+        dl_params = {"fileUri": self.source_uri, "retrievalType": "published"}
+        resp = await self.client.get(dl_url, headers=headers, params=dl_params)
+        resp.raise_for_status()
+        result = resp.json()
+        if not isinstance(result, list):
+            raise ValueError(
+                f"Expected JSON list response from Smartling Files API for {lang}, "
+                f"got {type(result)}"
             )
-            dl_params = {"fileUri": self.source_uri, "retrievalType": "published"}
-            resp = await self.client.get(dl_url, headers=headers, params=dl_params)
-            resp.raise_for_status()
-            result = resp.json()
-            if not isinstance(result, list):
-                raise ValueError(
-                    f"Expected JSON list response from Smartling Files API for {lang}, "
-                    f"got {type(result)}"
-                )
-            return result
-
-        results = await asyncio.gather(*[download_lang(lang) for lang in target_langs])
-        return dict(zip(target_langs, results, strict=True))
+        return result
 
 
 class SmartlingFileTranslator(SmartlingTranslator):
