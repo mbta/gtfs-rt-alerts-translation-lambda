@@ -137,13 +137,13 @@ async def test_process_feed_empty_strings() -> None:
 
     await FeedProcessor.process_feed(feed, None, translator, ["es"])
 
-    # Verify Description: should be empty for es
+    # Verify Description: empty translation is allowed
     desc_trans = alert.description_text.translation
     assert len(desc_trans) == 2
     es_desc = next(t.text for t in desc_trans if t.language == "es")
     assert es_desc == ""
 
-    # Verify Header: should be empty for es (or whitespace preserved, but the current logic sets "")
+    # Verify Header: empty translation is allowed
     header_trans = alert.header_text.translation
     assert len(header_trans) == 2
     es_header = next(t.text for t in header_trans if t.language == "es")

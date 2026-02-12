@@ -200,7 +200,7 @@ class FeedProcessor:
                         translation_map[english][lang] = translated
 
         # 3. Apply translations back to the feed
-        # For empty strings, we just return an empty string for the target language
+        # For empty/whitespace English strings, insert empty translations
         for english in translation_map:
             if english.strip() == "":
                 for lang in target_langs:
@@ -310,7 +310,6 @@ class FeedProcessor:
         target_langs: list[str],
     ) -> None:
         english_text = cls._get_english_text(ts)
-        # We process even empty English strings to add empty translations
         if english_text is None:
             return
 
@@ -318,7 +317,9 @@ class FeedProcessor:
         for lang in target_langs:
             if lang not in existing_langs:
                 translated_text = translation_map[english_text].get(lang)
-                if translated_text is not None:
+                if translated_text is not None and (
+                    translated_text != english_text or english_text.strip() == ""
+                ):
                     new_t = ts.translation.add()
                     new_t.text = translated_text
                     new_t.language = lang
@@ -346,7 +347,9 @@ class FeedProcessor:
         for lang in target_langs:
             if lang not in existing_langs:
                 translated_text = translation_map[english_text].get(lang)
-                if translated_text is not None:
+                if translated_text is not None and (
+                    translated_text != english_text or english_text.strip() == ""
+                ):
                     translations.append({"text": translated_text, "language": lang})
 
     @staticmethod
