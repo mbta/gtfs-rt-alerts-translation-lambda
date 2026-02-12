@@ -10,7 +10,7 @@ class Settings:
         self.smartling_project_id = os.environ.get("SMARTLING_PROJECT_ID", "")
         self.source_url = os.environ.get("SOURCE_URL", "")
         self.destination_bucket_url = os.environ.get("DESTINATION_BUCKET_URL", "")
-        self.target_languages = os.environ.get("TARGET_LANGUAGES", "es")
+        self.target_languages = os.environ.get("TARGET_LANGUAGES", "es-LA")
         self.concurrency_limit = int(os.environ.get("CONCURRENCY_LIMIT", "20"))
         self.log_level = os.environ.get("LOG_LEVEL", "NOTICE")
 

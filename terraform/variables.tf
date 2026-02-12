@@ -40,7 +40,7 @@ variable "destination_path" {
 variable "target_languages" {
   description = "List of target languages"
   type        = list(string)
-  default     = ["es", "pt-BR", "fr", "ht", "zh-CN", "vi", "zh-TW"]
+  default     = ["es-LA", "pt-BR", "fr-FR", "ht-HT", "zh-CN", "vi-VN", "zh-TW"]
 }
 
 variable "trigger" {
