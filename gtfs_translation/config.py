@@ -8,6 +8,9 @@ class Settings:
         self.smartling_user_secret_arn = os.environ.get("SMARTLING_USER_SECRET_ARN", "")
         self.smartling_account_uid = os.environ.get("SMARTLING_ACCOUNT_UID", "")
         self.smartling_project_id = os.environ.get("SMARTLING_PROJECT_ID", "")
+        self.smartling_job_name_template = os.environ.get(
+            "SMARTLING_JOB_NAME_TEMPLATE", "GTFS Alerts Translation"
+        )
         self.source_url = os.environ.get("SOURCE_URL", "")
         self.destination_bucket_url = os.environ.get("DESTINATION_BUCKET_URL", "")
         self.target_languages = os.environ.get("TARGET_LANGUAGES", "es-LA")

@@ -27,6 +27,12 @@ variable "smartling_project_id" {
   default     = ""
 }
 
+variable "smartling_job_name_template" {
+  description = "Smartling Job nameTemplate value"
+  type        = string
+  default     = null
+}
+
 variable "destination_bucket_name" {
   description = "S3 bucket where translated feeds will be stored"
   type        = string

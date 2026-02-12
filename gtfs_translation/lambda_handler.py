@@ -72,13 +72,16 @@ async def run_translation(source_url: str, dest_url: str) -> None:
             settings.smartling_user_secret,
             settings.smartling_project_id,
             source_url,
+            job_name_template=settings.smartling_job_name_template,
         )
+        logger.log(NOTICE_LEVEL, "Using Smartling Job Batches translator")
     else:
         translator = SmartlingTranslator(
             settings.smartling_user_id,
             settings.smartling_user_secret,
             settings.smartling_account_uid,
         )
+        logger.log(NOTICE_LEVEL, "Using Smartling MT Router translator")
 
     try:
         metrics = await FeedProcessor.process_feed(

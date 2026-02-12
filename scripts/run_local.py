@@ -47,6 +47,7 @@ async def run_local(source_url: str, target_langs: list[str]) -> None:
             settings.smartling_user_secret,
             settings.smartling_project_id,
             source_url,
+            job_name_template=settings.smartling_job_name_template,
         )
     else:
         translator = SmartlingFileTranslator(
