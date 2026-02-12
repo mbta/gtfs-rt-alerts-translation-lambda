@@ -141,11 +141,19 @@ class SmartlingTranslator(Translator):
 class SmartlingJobBatchesTranslator(SmartlingTranslator):
     always_translate_all: bool = True
 
-    def __init__(self, user_id: str, user_secret: str, project_id: str, source_uri: str):
+    def __init__(
+        self,
+        user_id: str,
+        user_secret: str,
+        project_id: str,
+        source_uri: str,
+        job_name_template: str = "GTFS Alerts Translation",
+    ):
         # We don't need account_uid for Job Batches V2
         super().__init__(user_id, user_secret, "")
         self.project_id = project_id
         self.source_uri = source_uri
+        self.job_name_template = job_name_template
 
     async def translate_batch(
         self, texts: list[str], target_langs: list[str]
@@ -172,7 +180,7 @@ class SmartlingJobBatchesTranslator(SmartlingTranslator):
     async def _get_or_create_job(self, headers: dict[str, str], target_langs: list[str]) -> str:
         job_url = f"https://api.smartling.com/job-batches-api/v2/projects/{self.project_id}/jobs"
         job_payload = {
-            "nameTemplate": "GTFS Alerts Translation",
+            "nameTemplate": self.job_name_template,
             "mode": "REUSE_EXISTING",
             "salt": "RANDOM_ALPHANUMERIC",
             "targetLocaleIds": target_langs,

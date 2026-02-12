@@ -108,6 +108,10 @@ resource "aws_lambda_function" "translation_function" {
       SMARTLING_USER_SECRET_ARN = aws_secretsmanager_secret.smartling_secret.arn
       SMARTLING_ACCOUNT_UID     = var.smartling_account_uid
       SMARTLING_PROJECT_ID      = var.smartling_project_id
+      SMARTLING_JOB_NAME_TEMPLATE = coalesce(
+        var.smartling_job_name_template,
+        var.function_name
+      )
       SOURCE_URL                = var.trigger.source_url != null ? var.trigger.source_url : ""
       DESTINATION_BUCKET_URL    = "s3://${var.destination_bucket_name}/${var.destination_path}"
       TARGET_LANGUAGES          = join(",", var.target_languages)
