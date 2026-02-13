@@ -68,6 +68,26 @@ variable "trigger" {
     condition     = contains(["cron", "s3"], var.trigger.type)
     error_message = "Trigger type must be either 'cron' or 's3'."
   }
+
+  validation {
+    condition = (
+      var.trigger.type != "cron" || (
+        var.trigger.source_url != null &&
+        trimspace(var.trigger.source_url) != ""
+      )
+    )
+    error_message = "For cron triggers, trigger.source_url must be set."
+  }
+
+  validation {
+    condition = (
+      var.trigger.type != "s3" || (
+        var.trigger.bucket_name != null &&
+        trimspace(var.trigger.bucket_name) != ""
+      )
+    )
+    error_message = "For s3 triggers, trigger.bucket_name must be set."
+  }
 }
 
 variable "log_level" {

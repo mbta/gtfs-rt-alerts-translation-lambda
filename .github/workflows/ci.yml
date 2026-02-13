@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Lint & Test
+    name: Python
     runs-on: ubuntu-latest
 
     steps:
@@ -29,7 +29,7 @@ jobs:
           AWS_DEFAULT_REGION: us-east-1
 
   tofu:
-    name: OpenTofu Fmt & Validate
+    name: OpenTofu
     runs-on: ubuntu-latest
 
     steps:
@@ -51,6 +51,10 @@ jobs:
           cd terraform
           tofu init -backend=false
           tofu validate
+
+      - name: Tofu test (module)
+        run: |
+          tofu -chdir=terraform test
 
       - name: Tofu validate (example)
         run: |

@@ -25,6 +25,7 @@ module "gtfs_translator" {
   trigger = {
     type                = "cron"
     schedule_expression = "rate(5 minutes)"
+    source_url          = "https://example.com/alerts.pb"
   }
 
   tags = {
@@ -52,7 +53,7 @@ module "gtfs_translator" {
 
 - `type`: Either `"cron"` or `"s3"`.
 - `schedule_expression`: (Required for `cron`) e.g., `"rate(1 minute)"` or `"cron(0 20 * * ? *)"`.
-- `source_url`: (Optional for `cron`) Default HTTP feed URL for GTFS-RT alerts.
+- `source_url`: (Required for `cron`) Default HTTP feed URL for GTFS-RT alerts.
 - `bucket_name`: (Required for `s3`) The name of the bucket to monitor.
 - `prefix`: (Optional for `s3`) Filter events by object prefix.
 
