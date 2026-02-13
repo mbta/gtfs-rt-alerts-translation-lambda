@@ -27,3 +27,33 @@ jobs:
         run: mise run test
         env:
           AWS_DEFAULT_REGION: us-east-1
+
+  tofu:
+    name: OpenTofu Fmt & Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read OpenTofu version
+        run: echo "TOFU_VERSION=$(cut -d' ' -f2 terraform/.tool-versions)" >> $GITHUB_ENV
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Tofu fmt
+        run: tofu fmt -check -recursive terraform
+
+      - name: Tofu validate (module)
+        run: |
+          cd terraform
+          tofu init -backend=false
+          tofu validate
+
+      - name: Tofu validate (example)
+        run: |
+          cd terraform/example
+          tofu init -backend=false
+          tofu validate
