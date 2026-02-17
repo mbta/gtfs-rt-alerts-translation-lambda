@@ -48,6 +48,7 @@ module "gtfs_translator" {
 | `lambda_timeout` | Lambda timeout in seconds | `number` | `60` | no |
 | `lambda_memory_size` | Lambda memory size in MB | `number` | `256` | no |
 | `lambda_architectures` | Lambda architecture list | `list(string)` | `["arm64"]` | no |
+| `reserved_concurrent_executions` | Reserved concurrency for the Lambda | `number` | `1` | no |
 | `tags` | Resource tags | `map(string)` | `{}` | no |
 
 ### Trigger Object Schema

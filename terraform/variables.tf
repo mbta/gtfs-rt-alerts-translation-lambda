@@ -114,6 +114,12 @@ variable "lambda_architectures" {
   default     = ["arm64"]
 }
 
+variable "reserved_concurrent_executions" {
+  description = "Reserved concurrency for the Lambda"
+  type        = number
+  default     = 1
+}
+
 variable "tags" {
   description = "Resource tags"
   type        = map(string)
