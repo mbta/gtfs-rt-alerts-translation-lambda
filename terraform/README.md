@@ -47,6 +47,7 @@ module "gtfs_translator" {
 | `trigger` | Trigger configuration (type 'cron' or 's3') | `object` | See `variables.tf` | no |
 | `lambda_timeout` | Lambda timeout in seconds | `number` | `60` | no |
 | `lambda_memory_size` | Lambda memory size in MB | `number` | `512` | no |
+| `lambda_architectures` | Lambda architecture list | `list(string)` | `["arm64"]` | no |
 | `tags` | Resource tags | `map(string)` | `{}` | no |
 
 ### Trigger Object Schema

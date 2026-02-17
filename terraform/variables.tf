@@ -108,6 +108,12 @@ variable "lambda_memory_size" {
   default     = 512
 }
 
+variable "lambda_architectures" {
+  description = "Lambda architecture list (e.g., [\"arm64\"], [\"x86_64\"])"
+  type        = list(string)
+  default     = ["arm64"]
+}
+
 variable "tags" {
   description = "Resource tags"
   type        = map(string)
