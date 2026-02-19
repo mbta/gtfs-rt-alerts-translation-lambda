@@ -42,7 +42,7 @@ class SmartlingTranslator(Translator):
 
     async def translate_batch(
         self, texts: list[str], target_langs: list[str]
-    ) -> dict[str, list[str]]:
+    ) -> dict[str, list[str | None]]:
         """
         Translates a batch of texts using Smartling MT API for multiple languages.
         """
@@ -54,7 +54,9 @@ class SmartlingTranslator(Translator):
         )
         return dict(zip(target_langs, results, strict=True))
 
-    async def _translate_batch_single_lang(self, texts: list[str], target_lang: str) -> list[str]:
+    async def _translate_batch_single_lang(
+        self, texts: list[str], target_lang: str
+    ) -> list[str | None]:
         """
         Translates a batch of texts using Smartling MT API for a single target language.
         Retry on 401 once (token expiry race condition).
@@ -96,7 +98,7 @@ class SmartlingTranslator(Translator):
 
         raise RuntimeError("Smartling MT API retry loop exited unexpectedly")
 
-    async def _do_translate_batch(self, texts: list[str], target_lang: str) -> list[str]:
+    async def _do_translate_batch(self, texts: list[str], target_lang: str) -> list[str | None]:
         token = await self._get_token()
 
         # MT Router API handles multiple items
@@ -135,13 +137,16 @@ class SmartlingTranslator(Translator):
             for item in items
             if "key" in item and "translationText" in item
         }
-        translations: list[str] = []
-        for index, text in enumerate(texts):
+        translations: list[str | None] = []
+        for index in range(len(texts)):
             key = str(index)
             translation = translations_by_key.get(key)
             if translation is None:
-                logging.warning("Smartling MT API missing item for key %s", key)
-                translation = text
+                logging.warning(
+                    "Smartling MT API missing item for lang %s key %s",
+                    target_lang,
+                    key,
+                )
             translations.append(translation)
         return translations
 
@@ -168,7 +173,7 @@ class SmartlingJobBatchesTranslator(SmartlingTranslator):
 
     async def translate_batch(
         self, texts: list[str], target_langs: list[str]
-    ) -> dict[str, list[str]]:
+    ) -> dict[str, list[str | None]]:
         """
         Translates a batch of texts using Smartling Job Batches V2 API.
         """
@@ -186,7 +191,16 @@ class SmartlingJobBatchesTranslator(SmartlingTranslator):
         results = await asyncio.gather(
             *[self._download_job_batch_translation(headers, lang) for lang in target_langs]
         )
-        return dict(zip(target_langs, results, strict=True))
+        typed_results: list[list[str | None]] = [list(result) for result in results]
+        for lang, translations in zip(target_langs, typed_results, strict=True):
+            if len(translations) != len(texts):
+                logging.warning(
+                    "Smartling Job Batch missing translations for lang %s: expected %s got %s",
+                    lang,
+                    len(texts),
+                    len(translations),
+                )
+        return dict(zip(target_langs, typed_results, strict=True))
 
     async def _get_or_create_job(self, headers: dict[str, str], target_langs: list[str]) -> str:
         job_url = f"https://api.smartling.com/job-batches-api/v2/projects/{self.project_id}/jobs"
@@ -272,7 +286,7 @@ class SmartlingJobBatchesTranslator(SmartlingTranslator):
 class SmartlingFileTranslator(SmartlingTranslator):
     async def translate_batch(
         self, texts: list[str], target_langs: list[str]
-    ) -> dict[str, list[str]]:
+    ) -> dict[str, list[str | None]]:
         """
         Translates a batch of texts using Smartling File Translation API.
         1. Upload file
@@ -347,4 +361,5 @@ class SmartlingFileTranslator(SmartlingTranslator):
             return result
 
         results = await asyncio.gather(*[download_lang(lang) for lang in target_langs])
-        return dict(zip(target_langs, results, strict=True))
+        typed_results: list[list[str | None]] = [list(result) for result in results]
+        return dict(zip(target_langs, typed_results, strict=True))
