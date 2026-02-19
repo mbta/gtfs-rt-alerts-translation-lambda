@@ -119,7 +119,7 @@ class FeedProcessor:
 
         # 1. Collect all strings that need translation
         # Map: english_text -> {lang -> translation}
-        translation_map: dict[str, dict[str, str]] = {}
+        translation_map: dict[str, dict[str, str | None]] = {}
 
         # Handle Protobuf fields
         for entity in feed.entity:
@@ -195,9 +195,12 @@ class FeedProcessor:
                     all_needed_english, target_langs
                 )
                 for lang, translations in translations_by_lang.items():
-                    metrics.strings_translated += len(translations)
+                    metrics.strings_translated += sum(
+                        1 for translation in translations if translation is not None
+                    )
                     for english, translated in zip(all_needed_english, translations, strict=True):
-                        translation_map[english][lang] = translated
+                        if translated is not None:
+                            translation_map[english][lang] = translated
 
         # 3. Apply translations back to the feed
         # For empty/whitespace English strings, insert empty translations
@@ -242,7 +245,7 @@ class FeedProcessor:
         cls,
         ts: gtfs_realtime_pb2.TranslatedString,
         old_ts: gtfs_realtime_pb2.TranslatedString | None,
-        translation_map: dict[str, dict[str, str]],
+        translation_map: dict[str, dict[str, str | None]],
         metrics: ProcessingMetrics,
     ) -> None:
         english_text = cls._get_english_text(ts)
@@ -264,7 +267,7 @@ class FeedProcessor:
     def _collect_translations_json(
         cls,
         ts_json: dict[str, Any],
-        translation_map: dict[str, dict[str, str]],
+        translation_map: dict[str, dict[str, str | None]],
         metrics: ProcessingMetrics,
         old_ts_json: dict[str, Any] | None,
     ) -> None:
@@ -306,7 +309,7 @@ class FeedProcessor:
     def _apply_translations(
         cls,
         ts: gtfs_realtime_pb2.TranslatedString,
-        translation_map: dict[str, dict[str, str]],
+        translation_map: dict[str, dict[str, str | None]],
         target_langs: list[str],
     ) -> None:
         english_text = cls._get_english_text(ts)
@@ -328,7 +331,7 @@ class FeedProcessor:
     def _apply_translations_json(
         cls,
         ts_json: dict[str, Any],
-        translation_map: dict[str, dict[str, str]],
+        translation_map: dict[str, dict[str, str | None]],
         target_langs: list[str],
     ) -> None:
         english_text = None
