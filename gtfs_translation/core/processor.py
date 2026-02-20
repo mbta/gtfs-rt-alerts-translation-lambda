@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -10,6 +11,8 @@ if TYPE_CHECKING:
     from gtfs_translation.core.translator import Translator
 
 FeedFormat = Literal["json", "pb"]
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -197,6 +200,9 @@ class FeedProcessor:
             ]
 
         if all_needed_english:
+            for english_text in all_needed_english:
+                logger.debug("String needs translation: %s", english_text)
+
             async with semaphore:
                 translations_by_lang = await translator.translate_batch(
                     all_needed_english, target_langs
