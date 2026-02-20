@@ -181,7 +181,14 @@ class FeedProcessor:
 
         # Build a list of unique English strings that need any translation
         if translator.always_translate_all:
-            all_needed_english = [eng for eng in translation_map.keys() if eng.strip() != ""]
+            any_missing = any(
+                eng.strip() != "" and any(lang not in existing for lang in target_langs)
+                for eng, existing in translation_map.items()
+            )
+            if any_missing:
+                all_needed_english = [eng for eng in translation_map.keys() if eng.strip() != ""]
+            else:
+                all_needed_english = []
         else:
             all_needed_english = [
                 eng

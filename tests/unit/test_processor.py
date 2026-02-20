@@ -212,7 +212,40 @@ async def test_process_feed_always_translate_all() -> None:
     e_old.alert.header_text.translation.add(text="Delay", language="en")
     e_old.alert.header_text.translation.add(text="Retraso Real", language="es")
 
-    # New Feed (Same English text)
+    # New Feed (Same English text, plus another alert missing translations)
+    new_feed = gtfs_realtime_pb2.FeedMessage()
+    e_new = new_feed.entity.add()
+    e_new.id = "alert1"
+    e_new.alert.header_text.translation.add(text="Delay", language="en")
+
+    e_new_two = new_feed.entity.add()
+    e_new_two.id = "alert2"
+    e_new_two.alert.header_text.translation.add(text="New Delay", language="en")
+
+    translator = MockTranslator()
+    translator.always_translate_all = True
+
+    await FeedProcessor.process_feed(new_feed, old_feed, translator, ["es"])
+
+    # Because at least one string needs translation, always_translate_all
+    # should force re-translation for all strings.
+    trans_one = new_feed.entity[0].alert.header_text.translation
+    es_text_one = next(t.text for t in trans_one if t.language == "es")
+    assert es_text_one == "[es] Delay"
+
+    trans_two = new_feed.entity[1].alert.header_text.translation
+    es_text_two = next(t.text for t in trans_two if t.language == "es")
+    assert es_text_two == "[es] New Delay"
+
+
+@pytest.mark.asyncio
+async def test_process_feed_always_translate_all_no_missing_strings() -> None:
+    old_feed = gtfs_realtime_pb2.FeedMessage()
+    e_old = old_feed.entity.add()
+    e_old.id = "alert1"
+    e_old.alert.header_text.translation.add(text="Delay", language="en")
+    e_old.alert.header_text.translation.add(text="Retraso Real", language="es")
+
     new_feed = gtfs_realtime_pb2.FeedMessage()
     e_new = new_feed.entity.add()
     e_new.id = "alert1"
@@ -223,8 +256,6 @@ async def test_process_feed_always_translate_all() -> None:
 
     await FeedProcessor.process_feed(new_feed, old_feed, translator, ["es"])
 
-    # Even though it's in old_feed, we should have translated it anyway
-    # because always_translate_all is True.
     trans = new_feed.entity[0].alert.header_text.translation
     es_text = next(t.text for t in trans if t.language == "es")
-    assert es_text == "[es] Delay"
+    assert es_text == "Retraso Real"
