@@ -183,24 +183,22 @@ class FeedProcessor:
         semaphore = asyncio.Semaphore(concurrency_limit)
 
         # Build a list of unique English strings that need any translation
+        missing_english = [
+            eng
+            for eng, existing in translation_map.items()
+            if any(lang not in existing for lang in target_langs) and eng.strip() != ""
+        ]
+
         if translator.always_translate_all:
-            any_missing = any(
-                eng.strip() != "" and any(lang not in existing for lang in target_langs)
-                for eng, existing in translation_map.items()
-            )
-            if any_missing:
+            if missing_english:
                 all_needed_english = [eng for eng in translation_map.keys() if eng.strip() != ""]
             else:
                 all_needed_english = []
         else:
-            all_needed_english = [
-                eng
-                for eng, existing in translation_map.items()
-                if any(lang not in existing for lang in target_langs) and eng.strip() != ""
-            ]
+            all_needed_english = missing_english
 
         if all_needed_english:
-            for english_text in all_needed_english:
+            for english_text in missing_english:
                 logger.debug("String needs translation: %s", english_text)
 
             async with semaphore:
