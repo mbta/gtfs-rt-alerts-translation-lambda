@@ -26,7 +26,17 @@ The application is configured via environment variables:
 | `SMARTLING_ACCOUNT_UID` | Smartling Account UID |
 | `SOURCE_URL` | Default HTTP or S3 URL (e.g., `s3://bucket/alerts.pb`) |
 | `DESTINATION_BUCKET_URLS` | Comma-separated S3 URLs for translated output (e.g., `s3://bucket/alerts.pb,s3://bucket/alerts.json`) |
-| `TARGET_LANGUAGES` | Comma-separated language codes (e.g., `es,fr,pt`) |
+| `TARGET_LANGUAGES` | Comma-separated language codes (e.g., `es-419,fr,pt`). Uses GTFS standard codes. |
+
+### Language Code Mapping
+
+The Lambda uses GTFS-standard language codes in configuration and output feeds, but automatically maps them to Smartling's API codes when making translation requests:
+
+| GTFS Code | Smartling Code | Description |
+|-----------|----------------|-------------|
+| `es-419` | `es-LA` | Latin American Spanish |
+
+Other language codes pass through unchanged (e.g., `fr`, `pt`, `zh`).
 
 ## Development
 

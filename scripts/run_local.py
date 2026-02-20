@@ -80,7 +80,7 @@ async def run_local(source_url: str, target_langs: list[str]) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("source_url", help="URL or local path to GTFS feed")
-    parser.add_argument("--langs", default="es-LA", help="Comma-separated target languages")
+    parser.add_argument("--langs", default="es-419", help="Comma-separated target languages")
     args = parser.parse_args()
 
     # Configure logging to stderr

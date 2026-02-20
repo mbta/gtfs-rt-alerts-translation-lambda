@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Any, Literal
 from google.protobuf import json_format
 from google.transit import gtfs_realtime_pb2
 
+from gtfs_translation.config import from_smartling_code
+
 if TYPE_CHECKING:
     from gtfs_translation.core.translator import Translator
 
@@ -299,6 +301,8 @@ class FeedProcessor:
 
         Returns dict mapping english_text -> {lang -> translation}
         For include_all_translations=False, returns {english_text: {}}
+
+        Normalizes language codes from old Smartling codes (es-LA) to GTFS codes (es-419).
         """
         english_text = cls._get_english_text(ts)
         if english_text is None:
@@ -310,7 +314,9 @@ class FeedProcessor:
         translations: dict[str, str] = {}
         for t in ts.translation:
             if t.language and t.language != "en":
-                translations[t.language] = t.text
+                # Normalize old Smartling codes to GTFS codes (e.g., es-LA -> es-419)
+                normalized_lang = from_smartling_code(t.language)
+                translations[normalized_lang] = t.text
 
         return {english_text: translations}
 
@@ -322,6 +328,8 @@ class FeedProcessor:
 
         Returns dict mapping english_text -> {lang -> translation}
         For include_all_translations=False, returns {english_text: {}}
+
+        Normalizes language codes from old Smartling codes (es-LA) to GTFS codes (es-419).
         """
         english_text = None
         translations_list = ts_json.get("translation", [])
@@ -340,7 +348,9 @@ class FeedProcessor:
         for t in translations_list:
             lang = t.get("language")
             if lang and lang != "en":
-                translations[lang] = t.get("text", "")
+                # Normalize old Smartling codes to GTFS codes (e.g., es-LA -> es-419)
+                normalized_lang = from_smartling_code(lang)
+                translations[normalized_lang] = t.get("text", "")
 
         return {english_text: translations}
 
