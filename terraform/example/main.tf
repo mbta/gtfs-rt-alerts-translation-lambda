@@ -60,6 +60,7 @@ module "gtfs_translator" {
   smartling_user_id     = var.smartling_user_id
   smartling_account_uid = var.smartling_account_uid
   smartling_project_id  = var.smartling_project_id
+  target_languages      = ["es-419"]
   log_level             = "INFO"
   tags                  = local.tags
 

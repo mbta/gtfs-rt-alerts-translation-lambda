@@ -1,5 +1,22 @@
 import os
 
+# Language code mapping from GTFS standard codes to Smartling API codes
+# Smartling uses es-LA for Latin American Spanish, while GTFS uses es-419
+SMARTLING_LANGUAGE_MAP = {
+    "es-419": "es-LA",
+}
+
+
+def to_smartling_code(lang: str) -> str:
+    """Convert a GTFS language code to Smartling API language code."""
+    return SMARTLING_LANGUAGE_MAP.get(lang, lang)
+
+
+def from_smartling_code(lang: str) -> str:
+    """Convert a Smartling API language code to GTFS language code."""
+    reverse_map = {v: k for k, v in SMARTLING_LANGUAGE_MAP.items()}
+    return reverse_map.get(lang, lang)
+
 
 class Settings:
     def __init__(self) -> None:
@@ -13,7 +30,7 @@ class Settings:
         )
         self.source_url = os.environ.get("SOURCE_URL", "")
         self.destination_bucket_urls = os.environ.get("DESTINATION_BUCKET_URLS", "")
-        self.target_languages = os.environ.get("TARGET_LANGUAGES", "es-LA")
+        self.target_languages = os.environ.get("TARGET_LANGUAGES", "es-419")
         self.concurrency_limit = int(os.environ.get("CONCURRENCY_LIMIT", "20"))
         self.log_level = os.environ.get("LOG_LEVEL", "NOTICE")
 

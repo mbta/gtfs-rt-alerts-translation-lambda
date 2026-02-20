@@ -1,15 +1,21 @@
 import asyncio
 import json
+import logging
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
 from google.protobuf import json_format
 from google.transit import gtfs_realtime_pb2
 
+from gtfs_translation.config import from_smartling_code
+
 if TYPE_CHECKING:
     from gtfs_translation.core.translator import Translator
 
 FeedFormat = Literal["json", "pb"]
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -110,86 +116,62 @@ class FeedProcessor:
         """
         metrics = ProcessingMetrics()
 
-        # Map old entities by ID for quick lookup
-        old_entities = {}
-        if old_feed:
-            for entity in old_feed.entity:
-                if entity.HasField("alert"):
-                    old_entities[entity.id] = entity.alert
+        # 1. Collect existing translations from old feeds (PB + JSON)
+        old_translation_map = cls._gather_translations_from_feed(
+            old_feed, dest_json, include_all_translations=True
+        )
 
-        # 1. Collect all strings that need translation
-        # Map: english_text -> {lang -> translation}
-        translation_map: dict[str, dict[str, str | None]] = {}
+        # 2. Collect English strings from new feeds (PB + JSON)
+        new_english_map = cls._gather_translations_from_feed(
+            feed, source_json, include_all_translations=False
+        )
 
-        # Handle Protobuf fields
+        # Log the maps for debugging
+        logger.info("New feed English strings: %s", list(new_english_map.keys()))
+        logger.info("Old feed translation map: %s", dict(old_translation_map))
+
+        # Count alerts processed
         for entity in feed.entity:
-            if not entity.HasField("alert"):
-                continue
+            if entity.HasField("alert"):
+                metrics.alerts_processed += 1
 
-            metrics.alerts_processed += 1
-            alert = entity.alert
-            old_alert = old_entities.get(entity.id)
+        # 3. Merge old translations onto new English map
+        translation_map: dict[str, dict[str, str | None]] = defaultdict(dict)
+        translation_map.update(
+            {english: {**old_translation_map.get(english, {})} for english in new_english_map}
+        )
 
-            for field_name in [
-                "header_text",
-                "description_text",
-                "tts_header_text",
-                "tts_description_text",
-            ]:
-                if not alert.HasField(field_name):
-                    continue
-                ts = getattr(alert, field_name)
-                old_ts = (
-                    getattr(old_alert, field_name)
-                    if old_alert and old_alert.HasField(field_name)
-                    else None
-                )
-                cls._collect_translations(ts, old_ts, translation_map, metrics)
+        metrics.translations_reused = sum(
+            1
+            for english, translations in translation_map.items()
+            if english.strip() != ""
+            for lang in target_langs
+            if lang in translations
+        )
 
-            if alert.HasField("url"):
-                cls._process_url(alert.url, target_langs)
-
-        # Handle "Enhanced" JSON fields if present
-        if source_json:
-            old_entities_json = {}
-            if dest_json:
-                old_entities_json = {
-                    e.get("id"): e for e in dest_json.get("entity", []) if e.get("id") is not None
-                }
-
-            for entity_orig in source_json.get("entity", []):
-                alert_orig = entity_orig.get("alert")
-                if not alert_orig:
-                    continue
-
-                old_alert_orig = None
-                entity_id = entity_orig.get("id")
-                if entity_id in old_entities_json:
-                    old_alert_orig = old_entities_json[entity_id].get("alert")
-
-                for field_name in ["service_effect_text", "timeframe_text"]:
-                    if field_name in alert_orig:
-                        cls._collect_translations_json(
-                            alert_orig[field_name],
-                            translation_map,
-                            metrics,
-                            old_alert_orig.get(field_name) if old_alert_orig else None,
-                        )
-
-        # 2. Identify missing translations and batch them
+        # 4. Identify missing translations and batch them
         semaphore = asyncio.Semaphore(concurrency_limit)
 
-        # Build a list of unique English strings that need any translation
+        missing_english = [
+            english
+            for english, translations in translation_map.items()
+            if english.strip() != "" and any(lang not in translations for lang in target_langs)
+        ]
+
         if translator.always_translate_all:
-            all_needed_english = [eng for eng in translation_map.keys() if eng.strip() != ""]
+            if missing_english:
+                all_needed_english = [
+                    english for english in translation_map if english.strip() != ""
+                ]
+            else:
+                all_needed_english = []
         else:
-            all_needed_english = [
-                eng
-                for eng, existing in translation_map.items()
-                if any(lang not in existing for lang in target_langs) and eng.strip() != ""
-            ]
+            all_needed_english = missing_english
 
         if all_needed_english:
+            for english_text in missing_english:
+                logger.debug("String needs translation: %s", english_text)
+
             async with semaphore:
                 translations_by_lang = await translator.translate_batch(
                     all_needed_english, target_langs
@@ -238,72 +220,143 @@ class FeedProcessor:
                             alert_orig[field_name], translation_map, target_langs
                         )
 
+        # Process URLs
+        for entity in feed.entity:
+            if entity.HasField("alert") and entity.alert.HasField("url"):
+                cls._process_url(entity.alert.url, target_langs)
+
         return metrics
 
     @classmethod
-    def _collect_translations(
+    def _gather_translations_from_feed(
         cls,
-        ts: gtfs_realtime_pb2.TranslatedString,
-        old_ts: gtfs_realtime_pb2.TranslatedString | None,
-        translation_map: dict[str, dict[str, str | None]],
-        metrics: ProcessingMetrics,
-    ) -> None:
-        english_text = cls._get_english_text(ts)
-        if english_text is None:
-            return
+        feed: gtfs_realtime_pb2.FeedMessage | None,
+        json_data: dict[str, Any] | None,
+        include_all_translations: bool,
+    ) -> dict[str, dict[str, str]]:
+        """
+        Gather translations from a feed (PB + JSON).
 
-        if english_text not in translation_map:
-            translation_map[english_text] = {}
+        If include_all_translations=True, collects all non-English translations.
+        If include_all_translations=False, only collects English text (maps to empty dicts).
 
-        # Try to reuse
-        old_english_text = cls._get_english_text(old_ts) if old_ts else None
-        if old_ts and english_text == old_english_text:
-            for t in old_ts.translation:
-                if t.language and t.language != "en":
-                    translation_map[english_text][t.language] = t.text
-                    metrics.translations_reused += 1
+        Returns: dict mapping english_text -> {lang -> translation}
+        """
+        result: dict[str, dict[str, str]] = defaultdict(dict)
+
+        # Process Protobuf fields
+        if feed:
+            for entity in feed.entity:
+                if not entity.HasField("alert"):
+                    continue
+                alert = entity.alert
+
+                for field_name in [
+                    "header_text",
+                    "description_text",
+                    "tts_header_text",
+                    "tts_description_text",
+                ]:
+                    if not alert.HasField(field_name):
+                        continue
+                    ts = getattr(alert, field_name)
+                    translations = cls._extract_translations_from_ts(ts, include_all_translations)
+                    for english, trans_dict in translations.items():
+                        result[english].update(trans_dict)
+
+        # Process Enhanced JSON fields
+        if json_data:
+            for entity_orig in json_data.get("entity", []):
+                alert_orig = entity_orig.get("alert")
+                if not alert_orig:
+                    continue
+
+                # Process standard PB fields from JSON (for old feeds)
+                if include_all_translations:
+                    for field_name in [
+                        "header_text",
+                        "description_text",
+                        "tts_header_text",
+                        "tts_description_text",
+                    ]:
+                        if field_name in alert_orig:
+                            translations = cls._extract_translations_from_json(
+                                alert_orig[field_name], include_all_translations
+                            )
+                            for english, trans_dict in translations.items():
+                                result[english].update(trans_dict)
+
+                # Process enhanced fields
+                for field_name in ["service_effect_text", "timeframe_text"]:
+                    if field_name in alert_orig:
+                        translations = cls._extract_translations_from_json(
+                            alert_orig[field_name], include_all_translations
+                        )
+                        for english, trans_dict in translations.items():
+                            result[english].update(trans_dict)
+
+        return result
 
     @classmethod
-    def _collect_translations_json(
-        cls,
-        ts_json: dict[str, Any],
-        translation_map: dict[str, dict[str, str | None]],
-        metrics: ProcessingMetrics,
-        old_ts_json: dict[str, Any] | None,
-    ) -> None:
+    def _extract_translations_from_ts(
+        cls, ts: gtfs_realtime_pb2.TranslatedString, include_all_translations: bool
+    ) -> dict[str, dict[str, str]]:
+        """Extract translations from a TranslatedString.
+
+        Returns dict mapping english_text -> {lang -> translation}
+        For include_all_translations=False, returns {english_text: {}}
+
+        Normalizes language codes from old Smartling codes (es-LA) to GTFS codes (es-419).
+        """
+        english_text = cls._get_english_text(ts)
+        if english_text is None:
+            return {}
+
+        if not include_all_translations:
+            return {english_text: {}}
+
+        translations: dict[str, str] = {}
+        for t in ts.translation:
+            if t.language and t.language != "en":
+                # Normalize old Smartling codes to GTFS codes (e.g., es-LA -> es-419)
+                normalized_lang = from_smartling_code(t.language)
+                translations[normalized_lang] = t.text
+
+        return {english_text: translations}
+
+    @classmethod
+    def _extract_translations_from_json(
+        cls, ts_json: dict[str, Any], include_all_translations: bool
+    ) -> dict[str, dict[str, str]]:
+        """Extract translations from a JSON TranslatedString.
+
+        Returns dict mapping english_text -> {lang -> translation}
+        For include_all_translations=False, returns {english_text: {}}
+
+        Normalizes language codes from old Smartling codes (es-LA) to GTFS codes (es-419).
+        """
         english_text = None
-        translations = ts_json.get("translation", [])
-        for t in translations:
+        translations_list = ts_json.get("translation", [])
+        for t in translations_list:
             if t.get("language") == "en" or not t.get("language"):
                 english_text = t.get("text", "")
                 break
 
         if english_text is None:
-            return
+            return {}
 
-        if english_text not in translation_map:
-            translation_map[english_text] = {}
+        if not include_all_translations:
+            return {english_text: {}}
 
-        if old_ts_json:
-            old_english_text = None
-            old_translations = old_ts_json.get("translation", [])
-            for t in old_translations:
-                if t.get("language") == "en" or not t.get("language"):
-                    old_english_text = t.get("text", "")
-                    break
-
-            if old_english_text == english_text:
-                for t in old_translations:
-                    lang = t.get("language")
-                    if lang and lang != "en" and lang not in translation_map[english_text]:
-                        translation_map[english_text][lang] = t.get("text", "")
-                        metrics.translations_reused += 1
-
-        # Reuse from existing JSON translations if present (often not, but good for consistency)
-        for t in translations:
+        translations: dict[str, str] = {}
+        for t in translations_list:
             lang = t.get("language")
-            if lang and lang != "en" and lang not in translation_map[english_text]:
-                translation_map[english_text][lang] = t.get("text", "")
+            if lang and lang != "en":
+                # Normalize old Smartling codes to GTFS codes (e.g., es-LA -> es-419)
+                normalized_lang = from_smartling_code(lang)
+                translations[normalized_lang] = t.get("text", "")
+
+        return {english_text: translations}
 
     @classmethod
     def _apply_translations(

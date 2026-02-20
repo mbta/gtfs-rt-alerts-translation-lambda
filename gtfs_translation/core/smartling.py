@@ -6,6 +6,7 @@ import time
 
 import httpx
 
+from gtfs_translation.config import to_smartling_code
 from gtfs_translation.core.translator import Translator
 
 
@@ -45,13 +46,19 @@ class SmartlingTranslator(Translator):
     ) -> dict[str, list[str | None]]:
         """
         Translates a batch of texts using Smartling MT API for multiple languages.
+        Converts GTFS language codes to Smartling codes before calling the API.
+        Returns results keyed by original GTFS language codes.
         """
         if not texts or not target_langs:
             return {lang: [] for lang in target_langs}
 
+        # Convert to Smartling codes for API calls
+        smartling_langs = [to_smartling_code(lang) for lang in target_langs]
+
         results = await asyncio.gather(
-            *[self._translate_batch_single_lang(texts, lang) for lang in target_langs]
+            *[self._translate_batch_single_lang(texts, lang) for lang in smartling_langs]
         )
+        # Return with original GTFS codes as keys
         return dict(zip(target_langs, results, strict=True))
 
     async def _translate_batch_single_lang(
@@ -176,6 +183,8 @@ class SmartlingJobBatchesTranslator(SmartlingTranslator):
     ) -> dict[str, list[str | None]]:
         """
         Translates a batch of texts using Smartling Job Batches V2 API.
+        Converts GTFS language codes to Smartling codes before calling the API.
+        Returns results keyed by original GTFS language codes.
         """
         if not texts or not target_langs:
             return {lang: [] for lang in target_langs}
@@ -183,23 +192,28 @@ class SmartlingJobBatchesTranslator(SmartlingTranslator):
         token = await self._get_token()
         headers = {"Authorization": f"Bearer {token}"}
 
-        job_uid = await self._get_or_create_job(headers, target_langs)
+        # Convert to Smartling codes for API calls
+        smartling_langs = [to_smartling_code(lang) for lang in target_langs]
+
+        job_uid = await self._get_or_create_job(headers, smartling_langs)
         batch_uid = await self._create_batch(headers, job_uid)
-        await self._upload_file_to_batch(headers, batch_uid, texts, target_langs)
+        await self._upload_file_to_batch(headers, batch_uid, texts, smartling_langs)
         await self._poll_batch_status(headers, batch_uid)
 
         results = await asyncio.gather(
-            *[self._download_job_batch_translation(headers, lang) for lang in target_langs]
+            *[self._download_job_batch_translation(headers, lang) for lang in smartling_langs]
         )
         typed_results: list[list[str | None]] = [list(result) for result in results]
-        for lang, translations in zip(target_langs, typed_results, strict=True):
+        # Use original GTFS codes for validation messages
+        for orig_lang, translations in zip(target_langs, typed_results, strict=True):
             if len(translations) != len(texts):
                 logging.warning(
                     "Smartling Job Batch missing translations for lang %s: expected %s got %s",
-                    lang,
+                    orig_lang,
                     len(texts),
                     len(translations),
                 )
+        # Return with original GTFS codes as keys
         return dict(zip(target_langs, typed_results, strict=True))
 
     async def _get_or_create_job(self, headers: dict[str, str], target_langs: list[str]) -> str:
@@ -289,6 +303,8 @@ class SmartlingFileTranslator(SmartlingTranslator):
     ) -> dict[str, list[str | None]]:
         """
         Translates a batch of texts using Smartling File Translation API.
+        Converts GTFS language codes to Smartling codes before calling the API.
+        Returns results keyed by original GTFS language codes.
         1. Upload file
         2. Start MT process
         3. Poll for status
@@ -299,6 +315,9 @@ class SmartlingFileTranslator(SmartlingTranslator):
 
         token = await self._get_token()
         headers = {"Authorization": f"Bearer {token}"}
+
+        # Convert to Smartling codes for API calls
+        smartling_langs = [to_smartling_code(lang) for lang in target_langs]
 
         # 1. Upload file
         upload_url = (
@@ -321,7 +340,7 @@ class SmartlingFileTranslator(SmartlingTranslator):
             f"https://api.smartling.com/file-translations-api/v2/accounts/"
             f"{self.account_uid}/files/{file_uid}/mt"
         )
-        mt_payload = {"targetLocaleIds": target_langs, "sourceLocaleId": "en"}
+        mt_payload = {"targetLocaleIds": smartling_langs, "sourceLocaleId": "en"}
         resp = await self.client.post(mt_url, headers=headers, json=mt_payload)
         resp.raise_for_status()
         mt_uid = resp.json()["response"]["data"]["mtUid"]
@@ -360,6 +379,7 @@ class SmartlingFileTranslator(SmartlingTranslator):
                 )
             return result
 
-        results = await asyncio.gather(*[download_lang(lang) for lang in target_langs])
+        results = await asyncio.gather(*[download_lang(lang) for lang in smartling_langs])
         typed_results: list[list[str | None]] = [list(result) for result in results]
+        # Return with original GTFS codes as keys
         return dict(zip(target_langs, typed_results, strict=True))
