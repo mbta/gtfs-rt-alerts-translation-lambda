@@ -126,6 +126,10 @@ class FeedProcessor:
             feed, source_json, include_all_translations=False
         )
 
+        # Log the maps for debugging
+        logger.info("New feed English strings: %s", list(new_english_map.keys()))
+        logger.info("Old feed translation map: %s", dict(old_translation_map))
+
         # Count alerts processed
         for entity in feed.entity:
             if entity.HasField("alert"):
