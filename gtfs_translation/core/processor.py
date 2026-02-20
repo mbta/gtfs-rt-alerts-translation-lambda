@@ -265,6 +265,22 @@ class FeedProcessor:
                 if not alert_orig:
                     continue
 
+                # Process standard PB fields from JSON (for old feeds)
+                if include_all_translations:
+                    for field_name in [
+                        "header_text",
+                        "description_text",
+                        "tts_header_text",
+                        "tts_description_text",
+                    ]:
+                        if field_name in alert_orig:
+                            translations = cls._extract_translations_from_json(
+                                alert_orig[field_name], include_all_translations
+                            )
+                            for english, trans_dict in translations.items():
+                                result[english].update(trans_dict)
+
+                # Process enhanced fields
                 for field_name in ["service_effect_text", "timeframe_text"]:
                     if field_name in alert_orig:
                         translations = cls._extract_translations_from_json(
