@@ -259,3 +259,63 @@ async def test_process_feed_always_translate_all_no_missing_strings() -> None:
     trans = new_feed.entity[0].alert.header_text.translation
     es_text = next(t.text for t in trans if t.language == "es")
     assert es_text == "Retraso Real"
+
+
+@pytest.mark.asyncio
+async def test_strip_whitespace_before_translation() -> None:
+    """Test that leading/trailing whitespace is stripped before translation."""
+    # Setup Feed with text that has leading/trailing whitespace
+    feed = gtfs_realtime_pb2.FeedMessage()
+    entity = feed.entity.add()
+    entity.id = "alert1"
+    alert = entity.alert
+
+    # Header with leading/trailing whitespace
+    h = alert.header_text.translation.add()
+    h.text = "  Subway Delay  "
+    h.language = "en"
+
+    # Description with tab and newline
+    d = alert.description_text.translation.add()
+    d.text = "\tService disruption\n"
+    d.language = "en"
+
+    translator = MockTranslator()
+
+    await FeedProcessor.process_feed(feed, None, translator, ["es"])
+
+    # Verify Header: should be translated without whitespace
+    header_trans = alert.header_text.translation
+    es_header = next(t.text for t in header_trans if t.language == "es")
+    assert es_header == "[es] Subway Delay"
+
+    # Verify Description: should be translated without whitespace
+    desc_trans = alert.description_text.translation
+    es_desc = next(t.text for t in desc_trans if t.language == "es")
+    assert es_desc == "[es] Service disruption"
+
+
+@pytest.mark.asyncio
+async def test_strip_whitespace_reuse_translations() -> None:
+    """Test that whitespace doesn't prevent translation reuse."""
+    # Old Feed (Has translation for trimmed text)
+    old_feed = gtfs_realtime_pb2.FeedMessage()
+    e_old = old_feed.entity.add()
+    e_old.id = "alert-old"
+    e_old.alert.header_text.translation.add(text="Delay", language="en")
+    e_old.alert.header_text.translation.add(text="Retraso Real", language="es")
+
+    # New Feed (Same text but with whitespace)
+    new_feed = gtfs_realtime_pb2.FeedMessage()
+    e_new = new_feed.entity.add()
+    e_new.id = "alert-new"
+    e_new.alert.header_text.translation.add(text="  Delay  ", language="en")
+
+    translator = MockTranslator()
+
+    await FeedProcessor.process_feed(new_feed, old_feed, translator, ["es"])
+
+    # Should REUSE "Retraso Real" even though new text has whitespace
+    trans = new_feed.entity[0].alert.header_text.translation
+    es_text = next(t.text for t in trans if t.language == "es")
+    assert es_text == "Retraso Real"

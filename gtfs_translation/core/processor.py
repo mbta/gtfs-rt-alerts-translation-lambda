@@ -307,10 +307,14 @@ class FeedProcessor:
         For include_all_translations=False, returns {english_text: {}}
 
         Normalizes language codes from old Smartling codes (es-LA) to GTFS codes (es-419).
+        Strips leading/trailing whitespace from English text for consistent lookup.
         """
         english_text = cls._get_english_text(ts)
         if english_text is None:
             return {}
+
+        # Strip whitespace for consistent translation lookup
+        english_text = english_text.strip()
 
         if not include_all_translations:
             return {english_text: {}}
@@ -334,6 +338,7 @@ class FeedProcessor:
         For include_all_translations=False, returns {english_text: {}}
 
         Normalizes language codes from old Smartling codes (es-LA) to GTFS codes (es-419).
+        Strips leading/trailing whitespace from English text for consistent lookup.
         """
         english_text = None
         translations_list = ts_json.get("translation", [])
@@ -344,6 +349,9 @@ class FeedProcessor:
 
         if english_text is None:
             return {}
+
+        # Strip whitespace for consistent translation lookup
+        english_text = english_text.strip()
 
         if not include_all_translations:
             return {english_text: {}}
@@ -369,12 +377,15 @@ class FeedProcessor:
         if english_text is None:
             return
 
+        # Strip whitespace to match the translation map keys
+        english_text_stripped = english_text.strip()
+
         existing_langs = {t.language for t in ts.translation}
         for lang in target_langs:
             if lang not in existing_langs:
-                translated_text = translation_map[english_text].get(lang)
+                translated_text = translation_map[english_text_stripped].get(lang)
                 if translated_text is not None and (
-                    translated_text != english_text or english_text.strip() == ""
+                    translated_text != english_text_stripped or english_text_stripped.strip() == ""
                 ):
                     new_t = ts.translation.add()
                     new_t.text = translated_text
@@ -400,11 +411,14 @@ class FeedProcessor:
         if english_text is None:
             return
 
+        # Strip whitespace to match the translation map keys
+        english_text_stripped = english_text.strip()
+
         for lang in target_langs:
             if lang not in existing_langs:
-                translated_text = translation_map[english_text].get(lang)
+                translated_text = translation_map[english_text_stripped].get(lang)
                 if translated_text is not None and (
-                    translated_text != english_text or english_text.strip() == ""
+                    translated_text != english_text_stripped or english_text_stripped.strip() == ""
                 ):
                     translations.append({"text": translated_text, "language": lang})
 
