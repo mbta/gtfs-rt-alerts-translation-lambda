@@ -120,11 +120,13 @@ class FeedProcessor:
         old_translation_map = cls._gather_translations_from_feed(
             old_feed, dest_json, include_all_translations=True
         )
+        logger.debug("Old translation map: %s", old_translation_map)
 
         # 2. Collect English strings from new feeds (PB + JSON)
         new_english_map = cls._gather_translations_from_feed(
             feed, source_json, include_all_translations=False
         )
+        logger.debug("New English map: %s", new_english_map)
 
         # Count alerts processed
         for entity in feed.entity:
@@ -136,6 +138,20 @@ class FeedProcessor:
         translation_map.update(
             {english: {**old_translation_map.get(english, {})} for english in new_english_map}
         )
+        logger.debug("Translation map after merge: %s", translation_map)
+
+        # Check for partial translations and log warnings
+        for english, trans_dict in translation_map.items():
+            if english.strip() == "":
+                continue
+            missing_langs = [lang for lang in target_langs if lang not in trans_dict]
+            if missing_langs and trans_dict:  # Has some translations but not all
+                logger.warning(
+                    "Partial translations detected for '%s': missing %s, has %s",
+                    english,
+                    missing_langs,
+                    list(trans_dict.keys()),
+                )
 
         metrics.translations_reused = sum(
             1
@@ -153,6 +169,15 @@ class FeedProcessor:
             for english, translations in translation_map.items()
             if english.strip() != "" and any(lang not in translations for lang in target_langs)
         ]
+
+        if missing_english:
+            logger.debug("Missing translations: %s", missing_english)
+            for english in missing_english:
+                logger.debug(
+                    "  '%s' missing langs: %s",
+                    english,
+                    [lang for lang in target_langs if lang not in translation_map[english]],
+                )
 
         if translator.always_translate_all:
             if missing_english:
