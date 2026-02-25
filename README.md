@@ -23,22 +23,27 @@ The application is configured via environment variables:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `SMARTLING_USER_ID` | Smartling API User Identifier | - |
-| `SMARTLING_USER_SECRET` | Smartling API User Secret | - |
-| `SMARTLING_ACCOUNT_UID` | Smartling Account UID | - |
-| `SOURCE_URL` | Default HTTP or S3 URL (e.g., `s3://bucket/alerts.pb`) | - |
-| `DESTINATION_BUCKET_URLS` | Comma-separated S3 URLs for translated output (e.g., `s3://bucket/alerts.pb,s3://bucket/alerts.json`) | - |
+| `SMARTLING_USER_ID` | Smartling API User Identifier | (required) |
+| `SMARTLING_USER_SECRET` | Smartling API User Secret (can be provided directly or via `SMARTLING_USER_SECRET_ARN`) | (required) |
+| `SMARTLING_USER_SECRET_ARN` | AWS Secrets Manager ARN containing the Smartling User Secret (alternative to `SMARTLING_USER_SECRET`) | - |
+| `SMARTLING_ACCOUNT_UID` | Smartling Account UID (required for MT Router API, not used with Job Batches) | - |
+| `SMARTLING_PROJECT_ID` | Smartling Project ID (required for Job Batches API, leave empty for MT Router API) | - |
+| `SMARTLING_JOB_NAME_TEMPLATE` | Template for Smartling job names when using Job Batches API | `"GTFS Alerts Translation"` |
+| `SOURCE_URL` | Default HTTP or S3 URL for source feed (e.g., `https://example.com/alerts.json` or `s3://bucket/alerts.pb`) | (required) |
+| `DESTINATION_BUCKET_URLS` | Comma-separated S3 URLs for translated output (e.g., `s3://bucket/alerts.pb,s3://bucket/alerts.json`) | (required) |
 | `TARGET_LANGUAGES` | Comma-separated language codes (e.g., `es-419,fr,pt`). Uses GTFS standard codes. | `es-419` |
+| `CONCURRENCY_LIMIT` | Maximum number of concurrent translation requests | `20` |
+| `LOG_LEVEL` | Logging level (`DEBUG`, `INFO`, `NOTICE`, `WARNING`, `ERROR`) | `NOTICE` |
 | `TRANSLATION_TIMEOUT` | Maximum time (in seconds) to wait for translations before publishing feed without them | `50` |
 
 ### Translation Timeout Behavior
 
 The Lambda is configured with two timeout values to ensure alerts are always published even if translation fails:
 
-- **`TRANSLATION_TIMEOUT`** (environment variable): The maximum time to wait for Smartling API responses (default: 50s)
-- **`lambda_timeout`** (Terraform variable): The AWS Lambda function timeout (default: 60s, must be greater than `TRANSLATION_TIMEOUT`)
+- **`translation_timeout`**: The maximum time to wait for Smartling API responses (default: 50s)
+- **`lambda_timeout`**: The AWS Lambda function timeout (default: 60s, must be greater than `translation_timeout`)
 
-If translation doesn't complete within `TRANSLATION_TIMEOUT` seconds, the Lambda will:
+If translation doesn't complete within `translation_timeout` seconds, the Lambda will:
 1. Log a warning about the timeout
 2. Publish the original English-only feed to the destination
 3. Allow the next scheduled run to attempt translation again
@@ -90,6 +95,7 @@ You can run the translation logic locally without deploying to Lambda. This will
 export SMARTLING_USER_ID=...
 export SMARTLING_USER_SECRET=...
 export SMARTLING_ACCOUNT_UID=...
+export SMARTLING_PROJECT_ID=...
 
 # Run for a specific URL and languages
 mise run run-local https://cdn.mbta.com/realtime/Alerts_enhanced.json --langs es,zh
