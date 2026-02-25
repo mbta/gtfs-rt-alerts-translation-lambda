@@ -1,9 +1,9 @@
 [project]
-name = "gtfs-alerts-translation-lambda"
-version = "0.1.0"
+name = "gtfs-rt-alerts-translation-lambda"
+version = "0.7.0"
 description = "Translates GTFS-RT ServiceAlerts feeds using Smartling"
 readme = "README.md"
-authors = [{ name = "Paul Swartz", email = "spwratz@mbta.com" }]
+authors = [{ name = "Paul Swartz", email = "pswartz@mbta.com" }]
 requires-python = ">=3.13"
 dependencies = [
     "gtfs-realtime-bindings>=1.0.0",
