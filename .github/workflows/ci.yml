@@ -6,16 +6,22 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions: {}
+
 jobs:
   test:
     name: Python
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
 
       - name: Install mise
-        uses: jdx/mise-action@v3
+        uses: jdx/mise-action@e79ddf65a11cec7b0e882bedced08d6e976efb2d # v3
 
       - name: Install dependencies
         run: mise run setup
@@ -31,15 +37,19 @@ jobs:
   tofu:
     name: OpenTofu
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
 
       - name: Read OpenTofu version
         run: echo "TOFU_VERSION=$(cut -d' ' -f2 terraform/.tool-versions)" >> $GITHUB_ENV
 
       - name: Install OpenTofu
-        uses: opentofu/setup-opentofu@v1
+        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
         with:
           tofu_version: ${{ env.TOFU_VERSION }}
 
@@ -61,3 +71,35 @@ jobs:
           cd terraform/example
           tofu init -backend=false
           tofu validate
+
+  build:
+    name: Build & Commit Zip
+    needs: [test, tofu]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
+
+      - name: Install mise
+        uses: jdx/mise-action@e79ddf65a11cec7b0e882bedced08d6e976efb2d # v3
+
+      - name: Build Zip
+        run: mise run build
+
+      - name: Commit and Push Zip
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet function.zip; then
+            echo "No changes in function.zip to commit"
+          else
+            git add -f function.zip
+            git commit -m "chore: update function.zip [skip ci]"
+            git push
+          fi
