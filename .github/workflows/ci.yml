@@ -90,7 +90,9 @@ jobs:
         uses: jdx/mise-action@e79ddf65a11cec7b0e882bedced08d6e976efb2d # v3
 
       - name: Build Zip
-        run: mise run build
+        run: |
+          uv lock -P gtfs-rt-alerts-translation-lambda
+          mise run build
 
       - name: Commit and Push Zip
         run: |
@@ -99,7 +101,7 @@ jobs:
           if git diff --quiet function.zip; then
             echo "No changes in function.zip to commit"
           else
-            git add -f function.zip
+            git add -f function.zip uv.lock
             git commit -m "chore: update function.zip [skip ci]"
             git push
           fi
