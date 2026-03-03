@@ -94,8 +94,20 @@ wheels = [
 ]
 
 [[package]]
-name = "gtfs-alerts-translation-lambda"
-version = "0.1.0"
+name = "gtfs-realtime-bindings"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6b/9b/c33d7889ff8d24cc9e9ae82a83fb9defba3f6595312f056cb62937dd1b33/gtfs_realtime_bindings-2.0.0.tar.gz", hash = "sha256:861a9dcf4c40f9a59520044d870e336b00894ad5638bcf2c4a9b998923543b42", size = 6231, upload-time = "2025-12-03T19:19:40.273Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/91/d7/a5a71c655fd10c98fadb00d4db080195ced839445f410684fa6dfb901c28/gtfs_realtime_bindings-2.0.0-py3-none-any.whl", hash = "sha256:e66e581dfccad20e3b9eaed36aae106f945c2f5e506b03a63d37070096b8de39", size = 5303, upload-time = "2025-12-03T19:19:38.845Z" },
+]
+
+[[package]]
+name = "gtfs-rt-alerts-translation-lambda"
+version = "0.7.0"
 source = { virtual = "." }
 dependencies = [
     { name = "gtfs-realtime-bindings" },
@@ -134,18 +146,6 @@ dev = [
     { name = "ruff", specifier = ">=0.3.0" },
     { name = "types-protobuf", specifier = ">=4.24.0" },
     { name = "vcrpy", specifier = ">=6.0.0" },
-]
-
-[[package]]
-name = "gtfs-realtime-bindings"
-version = "2.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "protobuf" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/6b/9b/c33d7889ff8d24cc9e9ae82a83fb9defba3f6595312f056cb62937dd1b33/gtfs_realtime_bindings-2.0.0.tar.gz", hash = "sha256:861a9dcf4c40f9a59520044d870e336b00894ad5638bcf2c4a9b998923543b42", size = 6231, upload-time = "2025-12-03T19:19:40.273Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/91/d7/a5a71c655fd10c98fadb00d4db080195ced839445f410684fa6dfb901c28/gtfs_realtime_bindings-2.0.0-py3-none-any.whl", hash = "sha256:e66e581dfccad20e3b9eaed36aae106f945c2f5e506b03a63d37070096b8de39", size = 5303, upload-time = "2025-12-03T19:19:38.845Z" },
 ]
 
 [[package]]
