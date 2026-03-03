@@ -123,3 +123,75 @@ logging.debug("Keys in new but not old: %s", missing)
 
 **Examples:**
 - [service-effect-translation-reuse-20260223.md](./integration-issues/service-effect-translation-reuse-20260223.md)
+
+---
+
+## Pattern 6: AWS SDK Requires Region in CI
+
+**Common symptom:** Tests pass locally but fail in GitHub Actions with botocore errors
+
+❌ WRONG - Assume CI has AWS config:
+```yaml
+- name: Run tests
+  run: mise run test
+```
+
+✅ CORRECT - Set AWS_DEFAULT_REGION:
+```yaml
+- name: Run tests
+  env:
+    AWS_DEFAULT_REGION: us-east-1
+  run: mise run test
+```
+
+**Note:** Botocore requires a region even when endpoints are mocked.
+
+**Examples:**
+- [botocore-region-required-ci-20260203.md](../build-errors/botocore-region-required-ci-20260203.md)
+
+---
+
+## Pattern 7: Explicit Type Annotations for JSON
+
+**Common symptom:** Mypy error "Collection[str] is not indexable"
+
+❌ WRONG - Let mypy infer JSON types:
+```python
+result = processor.to_json(feed)
+value = result["entity"][0]  # mypy: Collection is not indexable
+```
+
+✅ CORRECT - Add explicit type annotations:
+```python
+from typing import Any
+
+result: dict[str, Any] = processor.to_json(feed)
+value = result["entity"][0]  # Works
+```
+
+**Examples:**
+- [mypy-collection-indexing-20260204.md](../build-errors/mypy-collection-indexing-20260204.md)
+
+---
+
+## Pattern 8: Extract Shared Logic to Core Modules
+
+**Common symptom:** Circular imports when scripts import from lambda_handler
+
+❌ WRONG - Put reusable logic in lambda_handler:
+```python
+# scripts/run_local.py
+from gtfs_translation.lambda_handler import fetch_source  # Circular!
+```
+
+✅ CORRECT - Extract to core module:
+```python
+# gtfs_translation/core/fetcher.py
+async def fetch_source(url: str) -> tuple[bytes, str]: ...
+
+# scripts/run_local.py
+from gtfs_translation.core.fetcher import fetch_source  # Clean
+```
+
+**Examples:**
+- [fetcher-module-extraction-20260203.md](../developer-experience/fetcher-module-extraction-20260203.md)
