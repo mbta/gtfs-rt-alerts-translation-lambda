@@ -117,23 +117,53 @@ async def run_translation(source_url: str, dest_urls: list[str]) -> None:
             logger.log(NOTICE_LEVEL, "Translation metrics: %s", metrics.to_dict())
         except TimeoutError:
             logger.warning(
-                "Translation timed out after %s seconds. Publishing feed without translations.",
+                "Translation timed out after %s seconds. "
+                "Applying cached translations from previous feed.",
                 settings.translation_timeout,
+            )
+            # Apply cached translations from old feed
+            cached_count = FeedProcessor.apply_cached_translations(
+                new_feed,
+                old_feed,
+                settings.target_lang_list,
+                source_json=source_json,
+                dest_json=dest_json,
+            )
+            logger.log(
+                NOTICE_LEVEL,
+                "Applied %d cached translations from previous feed.",
+                cached_count,
             )
             translation_successful = False
             metrics = None
         except Exception as e:
             logger.exception(
-                "Translation failed with error: %s. Publishing feed without translations.", e
+                "Translation failed with error: %s. "
+                "Applying cached translations from previous feed.",
+                e,
+            )
+            # Apply cached translations from old feed
+            cached_count = FeedProcessor.apply_cached_translations(
+                new_feed,
+                old_feed,
+                settings.target_lang_list,
+                source_json=source_json,
+                dest_json=dest_json,
+            )
+            logger.log(
+                NOTICE_LEVEL,
+                "Applied %d cached translations from previous feed.",
+                cached_count,
             )
             translation_successful = False
             metrics = None
 
         if not translation_successful or not should_upload(old_feed, new_feed, metrics):
             if not translation_successful:
-                # Always upload if translation failed/timed out
+                # Always upload if translation failed/timed out (with cached translations applied)
                 logger.log(
-                    NOTICE_LEVEL, "Uploading feed without translations due to translation failure."
+                    NOTICE_LEVEL,
+                    "Uploading feed with cached translations due to translation failure.",
                 )
             else:
                 logger.log(NOTICE_LEVEL, "No translation changes detected; skipping upload.")
