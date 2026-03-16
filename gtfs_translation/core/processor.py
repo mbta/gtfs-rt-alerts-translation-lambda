@@ -101,6 +101,87 @@ class FeedProcessor:
                         alert[k] = v
 
     @classmethod
+    def apply_cached_translations(
+        cls,
+        feed: gtfs_realtime_pb2.FeedMessage,
+        old_feed: gtfs_realtime_pb2.FeedMessage | None,
+        target_langs: list[str],
+        source_json: dict[str, Any] | None = None,
+        dest_json: dict[str, Any] | None = None,
+    ) -> int:
+        """
+        Apply only cached translations from old_feed to feed, without calling translator.
+
+        Use this as a fallback when translation times out or fails.
+
+        Returns: number of translations applied
+        """
+        # 1. Collect existing translations from old feeds (PB + JSON)
+        old_translation_map = cls._gather_translations_from_feed(
+            old_feed, dest_json, include_all_translations=True
+        )
+
+        if not old_translation_map:
+            return 0
+
+        # 2. Collect English strings from new feeds (PB + JSON)
+        new_english_map = cls._gather_translations_from_feed(
+            feed, source_json, include_all_translations=False
+        )
+
+        # 3. Build translation map with only old translations
+        translation_map: dict[str, dict[str, str | None]] = defaultdict(dict)
+        translation_map.update(
+            {english: {**old_translation_map.get(english, {})} for english in new_english_map}
+        )
+
+        # For empty/whitespace English strings, insert empty translations
+        for english in translation_map:
+            if english.strip() == "":
+                for lang in target_langs:
+                    translation_map[english][lang] = ""
+
+        translations_applied = 0
+
+        # Apply to Protobuf
+        for entity in feed.entity:
+            if not entity.HasField("alert"):
+                continue
+            alert = entity.alert
+            for field_name in [
+                "header_text",
+                "description_text",
+                "tts_header_text",
+                "tts_description_text",
+            ]:
+                if not alert.HasField(field_name):
+                    continue
+                ts = getattr(alert, field_name)
+                translations_applied += cls._apply_translations_count(
+                    ts, translation_map, target_langs
+                )
+
+        # Apply to Enhanced JSON
+        if source_json:
+            for entity_orig in source_json.get("entity", []):
+                alert_orig = entity_orig.get("alert")
+                if not alert_orig:
+                    continue
+
+                for field_name in ["service_effect_text", "timeframe_text"]:
+                    if field_name in alert_orig:
+                        cls._apply_translations_json(
+                            alert_orig[field_name], translation_map, target_langs
+                        )
+
+        # Process URLs
+        for entity in feed.entity:
+            if entity.HasField("alert") and entity.alert.HasField("url"):
+                cls._process_url(entity.alert.url, target_langs)
+
+        return translations_applied
+
+    @classmethod
     async def process_feed(
         cls,
         feed: gtfs_realtime_pb2.FeedMessage,
@@ -415,6 +496,36 @@ class FeedProcessor:
                     new_t = ts.translation.add()
                     new_t.text = translated_text
                     new_t.language = lang
+
+    @classmethod
+    def _apply_translations_count(
+        cls,
+        ts: gtfs_realtime_pb2.TranslatedString,
+        translation_map: dict[str, dict[str, str | None]],
+        target_langs: list[str],
+    ) -> int:
+        """Apply translations and return count of translations applied."""
+        english_text = cls._get_english_text(ts)
+        if english_text is None:
+            return 0
+
+        # Strip whitespace to match the translation map keys
+        english_text_stripped = english_text.strip()
+        count = 0
+
+        existing_langs = {t.language for t in ts.translation}
+        for lang in target_langs:
+            if lang not in existing_langs:
+                translated_text = translation_map[english_text_stripped].get(lang)
+                if translated_text is not None and (
+                    translated_text != english_text_stripped or english_text_stripped == ""
+                ):
+                    new_t = ts.translation.add()
+                    new_t.text = translated_text
+                    new_t.language = lang
+                    count += 1
+
+        return count
 
     @classmethod
     def _apply_translations_json(
