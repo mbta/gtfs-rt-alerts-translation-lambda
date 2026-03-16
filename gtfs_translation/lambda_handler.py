@@ -46,6 +46,28 @@ def should_upload(
     return metrics.strings_translated > 0
 
 
+def _apply_fallback_translations(
+    new_feed: gtfs_realtime_pb2.FeedMessage,
+    old_feed: gtfs_realtime_pb2.FeedMessage | None,
+    target_langs: list[str],
+    source_json: dict[str, Any] | None,
+    dest_json: dict[str, Any] | None,
+) -> None:
+    """Apply cached translations from old feed as a fallback when translation fails."""
+    cached_count = FeedProcessor.apply_cached_translations(
+        new_feed,
+        old_feed,
+        target_langs,
+        source_json=source_json,
+        dest_json=dest_json,
+    )
+    logger.log(
+        NOTICE_LEVEL,
+        "Applied %d cached translations from previous feed.",
+        cached_count,
+    )
+
+
 async def run_translation(source_url: str, dest_urls: list[str]) -> None:
     if not dest_urls:
         raise ValueError("No destination URLs provided")
@@ -121,18 +143,8 @@ async def run_translation(source_url: str, dest_urls: list[str]) -> None:
                 "Applying cached translations from previous feed.",
                 settings.translation_timeout,
             )
-            # Apply cached translations from old feed
-            cached_count = FeedProcessor.apply_cached_translations(
-                new_feed,
-                old_feed,
-                settings.target_lang_list,
-                source_json=source_json,
-                dest_json=dest_json,
-            )
-            logger.log(
-                NOTICE_LEVEL,
-                "Applied %d cached translations from previous feed.",
-                cached_count,
+            _apply_fallback_translations(
+                new_feed, old_feed, settings.target_lang_list, source_json, dest_json
             )
             translation_successful = False
             metrics = None
@@ -142,18 +154,8 @@ async def run_translation(source_url: str, dest_urls: list[str]) -> None:
                 "Applying cached translations from previous feed.",
                 e,
             )
-            # Apply cached translations from old feed
-            cached_count = FeedProcessor.apply_cached_translations(
-                new_feed,
-                old_feed,
-                settings.target_lang_list,
-                source_json=source_json,
-                dest_json=dest_json,
-            )
-            logger.log(
-                NOTICE_LEVEL,
-                "Applied %d cached translations from previous feed.",
-                cached_count,
+            _apply_fallback_translations(
+                new_feed, old_feed, settings.target_lang_list, source_json, dest_json
             )
             translation_successful = False
             metrics = None

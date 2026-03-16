@@ -479,23 +479,7 @@ class FeedProcessor:
         translation_map: dict[str, dict[str, str | None]],
         target_langs: list[str],
     ) -> None:
-        english_text = cls._get_english_text(ts)
-        if english_text is None:
-            return
-
-        # Strip whitespace to match the translation map keys
-        english_text_stripped = english_text.strip()
-
-        existing_langs = {t.language for t in ts.translation}
-        for lang in target_langs:
-            if lang not in existing_langs:
-                translated_text = translation_map[english_text_stripped].get(lang)
-                if translated_text is not None and (
-                    translated_text != english_text_stripped or english_text_stripped.strip() == ""
-                ):
-                    new_t = ts.translation.add()
-                    new_t.text = translated_text
-                    new_t.language = lang
+        cls._apply_translations_count(ts, translation_map, target_langs)
 
     @classmethod
     def _apply_translations_count(
