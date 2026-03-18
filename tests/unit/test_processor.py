@@ -422,8 +422,8 @@ def test_serialize_preserves_informed_entity_fields() -> None:
     # Parse the original JSON into protobuf
     feed = FeedProcessor.parse(json.dumps(original_json).encode("utf-8"), "json")
 
-    # Serialize back to JSON
-    output_bytes = FeedProcessor.serialize(feed, "json", original_json=original_json)
+    # Serialize back to JSON (use enhanced=True to preserve activities, facility_id, etc.)
+    output_bytes = FeedProcessor.serialize(feed, "json", original_json=original_json, enhanced=True)
     output_json = json.loads(output_bytes.decode("utf-8"))
 
     # Verify every key exists and types match for each informed_entity
@@ -448,3 +448,63 @@ def test_serialize_preserves_informed_entity_fields() -> None:
                 f"informed_entity[{i}]['{key}'] type mismatch: "
                 f"expected {type(orig_value).__name__}, got {type(output_value).__name__}"
             )
+
+
+def test_serialize_standard_json_excludes_enhanced_fields() -> None:
+    """Test that standard JSON output (enhanced=False) excludes non-Protobuf fields."""
+    import json
+
+    # Original JSON with enhanced fields that aren't in the Protobuf spec
+    original_json: dict[str, Any] = {
+        "header": {
+            "gtfs_realtime_version": "2.0",
+            "timestamp": 1700000000,
+        },
+        "entity": [
+            {
+                "id": "alert1",
+                "alert": {
+                    "effect_detail": "SNOW",  # Enhanced field
+                    "informed_entity": [
+                        {
+                            "stop_id": "NEC-1851-03",
+                            "route_id": "CR-Providence",
+                            "route_type": 2,
+                            "activities": ["BOARD"],  # Enhanced field
+                            "facility_id": "705",  # Enhanced field
+                        },
+                    ],
+                    "service_effect_text": {  # Enhanced field
+                        "translation": [{"text": "Ongoing", "language": "en"}]
+                    },
+                    "timeframe_text": {  # Enhanced field
+                        "translation": [{"text": "Now", "language": "en"}]
+                    },
+                    "header_text": {"translation": [{"text": "Test", "language": "en"}]},
+                },
+            }
+        ],
+    }
+
+    # Parse the original JSON into protobuf
+    feed = FeedProcessor.parse(json.dumps(original_json).encode("utf-8"), "json")
+
+    # Serialize back to standard JSON (enhanced=False, the default)
+    output_bytes = FeedProcessor.serialize(feed, "json", original_json=original_json)
+    output_json = json.loads(output_bytes.decode("utf-8"))
+
+    alert = output_json["entity"][0]["alert"]
+    informed_entity = alert["informed_entity"][0]
+
+    # These enhanced fields should NOT be present in standard JSON
+    assert "effect_detail" not in alert, "effect_detail should not be in standard JSON"
+    assert "service_effect_text" not in alert, "service_effect_text should not be in standard JSON"
+    assert "timeframe_text" not in alert, "timeframe_text should not be in standard JSON"
+    assert "activities" not in informed_entity, "activities should not be in standard JSON"
+    assert "facility_id" not in informed_entity, "facility_id should not be in standard JSON"
+
+    # Standard Protobuf fields should still be present
+    assert "header_text" in alert
+    assert informed_entity["stop_id"] == "NEC-1851-03"
+    assert informed_entity["route_id"] == "CR-Providence"
+    assert informed_entity["route_type"] == 2

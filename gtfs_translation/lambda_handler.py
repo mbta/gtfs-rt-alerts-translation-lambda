@@ -174,8 +174,10 @@ async def run_translation(source_url: str, dest_urls: list[str]) -> None:
         # 4. Upload to all destinations
         for dest_url in dest_urls:
             dest_fmt: FeedFormat = "json" if dest_url.endswith(".json") else "pb"
+            # Only output enhanced fields for URLs containing "enhanced"
+            enhanced = "enhanced" in dest_url.lower()
             translated_content = FeedProcessor.serialize(
-                new_feed, dest_fmt, original_json=source_json
+                new_feed, dest_fmt, original_json=source_json, enhanced=enhanced
             )
             bucket, key = get_s3_parts(dest_url)
             content_type = "application/json" if dest_fmt == "json" else "application/x-protobuf"
