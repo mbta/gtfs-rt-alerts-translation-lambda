@@ -295,6 +295,67 @@ async def test_strip_whitespace_before_translation() -> None:
     assert es_desc == "[es] Service disruption"
 
 
+def test_serialize_preserves_numeric_types() -> None:
+    """Test that numeric types are preserved in JSON serialization."""
+    import json
+
+    # Original JSON with numeric types
+    original_json: dict[str, Any] = {
+        "header": {
+            "gtfs_realtime_version": "2.0",
+            "timestamp": 1700000000,
+        },
+        "entity": [
+            {
+                "id": "alert1",
+                "alert": {
+                    "active_period": [
+                        {
+                            "start": 1700000000,
+                            "end": 1700001000,
+                        }
+                    ],
+                    "informed_entity": [
+                        {
+                            "route_type": 3,
+                            "direction_id": 0,
+                        }
+                    ],
+                    "header_text": {"translation": [{"text": "Test", "language": "en"}]},
+                },
+            }
+        ],
+    }
+
+    # Parse the original JSON into protobuf
+    feed = FeedProcessor.parse(json.dumps(original_json).encode("utf-8"), "json")
+
+    # Serialize back to JSON
+    output_bytes = FeedProcessor.serialize(feed, "json", original_json=original_json)
+    output_json = json.loads(output_bytes.decode("utf-8"))
+
+    # Check that numeric types are preserved
+    assert isinstance(output_json["header"]["timestamp"], int), (
+        f"timestamp should be int, got {type(output_json['header']['timestamp'])}"
+    )
+
+    active_period = output_json["entity"][0]["alert"]["active_period"][0]
+    assert isinstance(active_period["start"], int), (
+        f"active_period.start should be int, got {type(active_period['start'])}"
+    )
+    assert isinstance(active_period["end"], int), (
+        f"active_period.end should be int, got {type(active_period['end'])}"
+    )
+
+    informed_entity = output_json["entity"][0]["alert"]["informed_entity"][0]
+    assert isinstance(informed_entity["route_type"], int), (
+        f"route_type should be int, got {type(informed_entity['route_type'])}"
+    )
+    assert isinstance(informed_entity["direction_id"], int), (
+        f"direction_id should be int, got {type(informed_entity['direction_id'])}"
+    )
+
+
 @pytest.mark.asyncio
 async def test_strip_whitespace_reuse_translations() -> None:
     """Test that whitespace doesn't prevent translation reuse."""
