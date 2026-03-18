@@ -63,14 +63,74 @@ class FeedProcessor:
             json_str = json_format.MessageToJson(feed, preserving_proto_field_name=True)
             current_json = json.loads(json_str)
 
-            # 2. If we have the original JSON, merge in the missing enhanced fields
+            # 2. If we have the original JSON, restore types and merge missing fields
             if original_json:
+                FeedProcessor._restore_types(current_json, original_json)
                 FeedProcessor._merge_enhanced_fields(current_json, original_json)
 
             res_json: bytes = json.dumps(current_json, indent=2, ensure_ascii=False).encode("utf-8")
             return res_json
         else:
             raise ValueError(f"Unsupported format: {fmt}")
+
+    @staticmethod
+    def _restore_types(current: Any, original: Any) -> None:
+        """
+        Recursively restore types from original JSON.
+
+        Protobuf's MessageToJson converts uint64/int64 fields to strings.
+        This restores the original numeric types when we have the source JSON.
+        """
+        if isinstance(current, dict) and isinstance(original, dict):
+            for key in current:
+                if key in original:
+                    orig_val = original[key]
+                    curr_val = current[key]
+
+                    # If original was numeric and current is string, restore the type
+                    if isinstance(orig_val, (int, float)) and isinstance(curr_val, str):
+                        try:
+                            if isinstance(orig_val, int):
+                                current[key] = int(curr_val)
+                            else:
+                                current[key] = float(curr_val)
+                        except ValueError:
+                            pass  # Keep the string if conversion fails
+                    elif isinstance(curr_val, (dict, list)):
+                        FeedProcessor._restore_types(curr_val, orig_val)
+
+        elif isinstance(current, list) and isinstance(original, list):
+            # For lists, we need to match by position or by ID
+            if len(current) > 0 and isinstance(current[0], dict):
+                # Try to match by "id" field (for entities)
+                orig_by_id = {}
+                for item in original:
+                    if isinstance(item, dict) and "id" in item:
+                        orig_by_id[item["id"]] = item
+
+                for curr_item in current:
+                    if isinstance(curr_item, dict):
+                        if "id" in curr_item and curr_item["id"] in orig_by_id:
+                            FeedProcessor._restore_types(curr_item, orig_by_id[curr_item["id"]])
+                        elif len(original) == len(current):
+                            # Fallback to positional matching if same length
+                            idx = current.index(curr_item)
+                            if idx < len(original):
+                                FeedProcessor._restore_types(curr_item, original[idx])
+            else:
+                # For simple lists or same-length lists, match by position
+                for i, curr_item in enumerate(current):
+                    if i < len(original):
+                        if isinstance(curr_item, (dict, list)):
+                            FeedProcessor._restore_types(curr_item, original[i])
+                        elif isinstance(original[i], (int, float)) and isinstance(curr_item, str):
+                            try:
+                                if isinstance(original[i], int):
+                                    current[i] = int(curr_item)
+                                else:
+                                    current[i] = float(curr_item)
+                            except ValueError:
+                                pass
 
     @staticmethod
     def _merge_enhanced_fields(current: dict[str, Any], original: dict[str, Any]) -> None:
