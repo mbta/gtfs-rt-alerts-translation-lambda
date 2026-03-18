@@ -136,7 +136,8 @@ class FeedProcessor:
     def _merge_enhanced_fields(current: dict[str, Any], original: dict[str, Any]) -> None:
         """
         Recursively merges fields from original JSON that are missing in current JSON.
-        This preserves 'enhanced' fields (like effect_detail) that Protobuf doesn't know about.
+        This preserves 'enhanced' fields (like effect_detail, activities) that Protobuf
+        doesn't know about.
         """
         # Map original entities by ID for easy lookup
         orig_entities = {e.get("id"): e for e in original.get("entity", []) if "id" in e}
@@ -159,6 +160,32 @@ class FeedProcessor:
                 for k, v in orig_alert.items():
                     if k not in alert:
                         alert[k] = v
+
+                # Merge informed_entity fields (e.g., activities, facility_id)
+                FeedProcessor._merge_informed_entity_fields(alert, orig_alert)
+
+    @staticmethod
+    def _merge_informed_entity_fields(alert: dict[str, Any], orig_alert: dict[str, Any]) -> None:
+        """
+        Merge enhanced fields within informed_entity items.
+
+        The informed_entity array can have enhanced fields like 'activities' and 'facility_id'
+        that are not part of the standard GTFS-RT spec and get stripped during protobuf parsing.
+        """
+        curr_entities = alert.get("informed_entity", [])
+        orig_entities = orig_alert.get("informed_entity", [])
+
+        if not curr_entities or not orig_entities:
+            return
+
+        # Match by position since informed_entity items don't have a unique ID
+        for i, curr_ie in enumerate(curr_entities):
+            if i < len(orig_entities):
+                orig_ie = orig_entities[i]
+                # Merge any fields from original that are missing in current
+                for k, v in orig_ie.items():
+                    if k not in curr_ie:
+                        curr_ie[k] = v
 
     @classmethod
     def apply_cached_translations(

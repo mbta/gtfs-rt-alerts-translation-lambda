@@ -380,3 +380,71 @@ async def test_strip_whitespace_reuse_translations() -> None:
     trans = new_feed.entity[0].alert.header_text.translation
     es_text = next(t.text for t in trans if t.language == "es")
     assert es_text == "Retraso Real"
+
+
+def test_serialize_preserves_informed_entity_fields() -> None:
+    """Test that all fields in informed_entity are preserved with correct types."""
+    import json
+
+    # Original JSON with all possible informed_entity fields
+    original_json: dict[str, Any] = {
+        "header": {
+            "gtfs_realtime_version": "2.0",
+            "timestamp": 1700000000,
+        },
+        "entity": [
+            {
+                "id": "alert1",
+                "alert": {
+                    "informed_entity": [
+                        {
+                            "stop_id": "NEC-1851-03",
+                            "route_id": "CR-Providence",
+                            "route_type": 2,
+                            "agency_id": "1",
+                            "direction_id": 0,
+                            "activities": ["BOARD"],
+                        },
+                        {
+                            "stop_id": "FR-0253-02",
+                            "route_id": "CR-Fitchburg",
+                            "route_type": 2,
+                            "activities": ["USING_WHEELCHAIR", "EXITING"],
+                            "facility_id": "705",
+                        },
+                    ],
+                    "header_text": {"translation": [{"text": "Test", "language": "en"}]},
+                },
+            }
+        ],
+    }
+
+    # Parse the original JSON into protobuf
+    feed = FeedProcessor.parse(json.dumps(original_json).encode("utf-8"), "json")
+
+    # Serialize back to JSON
+    output_bytes = FeedProcessor.serialize(feed, "json", original_json=original_json)
+    output_json = json.loads(output_bytes.decode("utf-8"))
+
+    # Verify every key exists and types match for each informed_entity
+    orig_entities = original_json["entity"][0]["alert"]["informed_entity"]
+    output_entities = output_json["entity"][0]["alert"]["informed_entity"]
+
+    assert len(output_entities) == len(orig_entities), (
+        f"informed_entity count mismatch: expected {len(orig_entities)}, got {len(output_entities)}"
+    )
+
+    for i, (orig_ie, output_ie) in enumerate(zip(orig_entities, output_entities, strict=True)):
+        for key, orig_value in orig_ie.items():
+            assert key in output_ie, (
+                f"informed_entity[{i}] missing key '{key}': expected {orig_ie}, got {output_ie}"
+            )
+            output_value = output_ie[key]
+            assert output_value == orig_value, (
+                f"informed_entity[{i}]['{key}'] value mismatch: "
+                f"expected {orig_value!r}, got {output_value!r}"
+            )
+            assert type(output_value) is type(orig_value), (
+                f"informed_entity[{i}]['{key}'] type mismatch: "
+                f"expected {type(orig_value).__name__}, got {type(output_value).__name__}"
+            )
