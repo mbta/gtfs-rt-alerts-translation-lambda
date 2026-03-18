@@ -54,6 +54,7 @@ class FeedProcessor:
         feed: gtfs_realtime_pb2.FeedMessage,
         fmt: FeedFormat,
         original_json: dict[str, Any] | None = None,
+        enhanced: bool = False,
     ) -> bytes:
         if fmt == "pb":
             res: bytes = feed.SerializeToString()
@@ -63,10 +64,12 @@ class FeedProcessor:
             json_str = json_format.MessageToJson(feed, preserving_proto_field_name=True)
             current_json = json.loads(json_str)
 
-            # 2. If we have the original JSON, restore types and merge missing fields
+            # 2. If we have the original JSON, restore types
+            #    Only merge enhanced fields if outputting enhanced JSON format
             if original_json:
                 FeedProcessor._restore_types(current_json, original_json)
-                FeedProcessor._merge_enhanced_fields(current_json, original_json)
+                if enhanced:
+                    FeedProcessor._merge_enhanced_fields(current_json, original_json)
 
             res_json: bytes = json.dumps(current_json, indent=2, ensure_ascii=False).encode("utf-8")
             return res_json

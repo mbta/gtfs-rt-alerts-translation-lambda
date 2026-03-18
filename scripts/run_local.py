@@ -17,7 +17,7 @@ from gtfs_translation.core.smartling import (
 )
 
 
-async def run_local(source_url: str, target_langs: list[str]) -> None:
+async def run_local(source_url: str, target_langs: list[str], enhanced: bool = False) -> None:
     # 1. Fetch source (minimal version for CLI)
     from gtfs_translation.core.fetcher import fetch_source
 
@@ -67,7 +67,9 @@ async def run_local(source_url: str, target_langs: list[str]) -> None:
         )
 
         # 3. Serialize and print to stdout
-        output = FeedProcessor.serialize(new_feed, "json", original_json=original_json)
+        output = FeedProcessor.serialize(
+            new_feed, "json", original_json=original_json, enhanced=enhanced
+        )
         print(output.decode("utf-8"))
 
         # Print metrics to stderr so they don't mess up piped JSON
@@ -81,6 +83,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("source_url", help="URL or local path to GTFS feed")
     parser.add_argument("--langs", default="es-419", help="Comma-separated target languages")
+    parser.add_argument(
+        "--enhanced",
+        action="store_true",
+        help="Include enhanced fields (non-Protobuf) in output",
+    )
     args = parser.parse_args()
 
     # Configure logging to stderr
@@ -91,4 +98,4 @@ if __name__ == "__main__":
     # We need settings for Smartling, but we can override source/dest if needed
     # Settings are already loaded from env
 
-    asyncio.run(run_local(args.source_url, langs))
+    asyncio.run(run_local(args.source_url, langs, enhanced=args.enhanced))
