@@ -496,12 +496,15 @@ def test_serialize_standard_json_excludes_enhanced_fields() -> None:
     alert = output_json["entity"][0]["alert"]
     informed_entity = alert["informed_entity"][0]
 
-    # These enhanced fields should NOT be present in standard JSON
-    assert "effect_detail" not in alert, "effect_detail should not be in standard JSON"
+    # MBTA-specific enhanced fields should NOT be present in standard JSON
     assert "service_effect_text" not in alert, "service_effect_text should not be in standard JSON"
     assert "timeframe_text" not in alert, "timeframe_text should not be in standard JSON"
     assert "activities" not in informed_entity, "activities should not be in standard JSON"
     assert "facility_id" not in informed_entity, "facility_id should not be in standard JSON"
+
+    # Experimental GTFS-RT fields (cause_detail, effect_detail) SHOULD be present
+    # These are part of the spec, just not in our protobuf bindings
+    assert alert["effect_detail"] == "SNOW", "effect_detail should be preserved in standard JSON"
 
     # Standard Protobuf fields should still be present
     assert "header_text" in alert

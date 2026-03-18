@@ -64,10 +64,13 @@ class FeedProcessor:
             json_str = json_format.MessageToJson(feed, preserving_proto_field_name=True)
             current_json = json.loads(json_str)
 
-            # 2. If we have the original JSON, restore types
-            #    Only merge enhanced fields if outputting enhanced JSON format
+            # 2. If we have the original JSON, restore types and merge fields
             if original_json:
                 FeedProcessor._restore_types(current_json, original_json)
+                # Always merge experimental GTFS-RT fields (cause_detail, effect_detail)
+                # These are part of the spec but not in our protobuf bindings
+                FeedProcessor._merge_experimental_fields(current_json, original_json)
+                # Only merge MBTA-specific enhanced fields for enhanced output
                 if enhanced:
                     FeedProcessor._merge_enhanced_fields(current_json, original_json)
 
@@ -135,11 +138,40 @@ class FeedProcessor:
                             except ValueError:
                                 pass
 
+    # Experimental GTFS-RT fields that are in the spec but not in our protobuf bindings.
+    # These should be preserved as raw strings in JSON output (not TranslatedStrings).
+    # See: https://github.com/google/transit/blob/master/gtfs-realtime/proto/gtfs-realtime.proto
+    EXPERIMENTAL_ALERT_FIELDS = ("cause_detail", "effect_detail")
+
+    @staticmethod
+    def _merge_experimental_fields(current: dict[str, Any], original: dict[str, Any]) -> None:
+        """
+        Merge experimental GTFS-RT fields from original JSON.
+
+        These fields (cause_detail, effect_detail) are defined in the GTFS-RT spec as
+        TranslatedString but our protobuf bindings don't include them. The MBTA feed
+        uses them as raw strings. We preserve them as-is without translation.
+        """
+        orig_entities = {e.get("id"): e for e in original.get("entity", []) if "id" in e}
+
+        for entity in current.get("entity", []):
+            eid = entity.get("id")
+            orig_entity = orig_entities.get(eid)
+            if not orig_entity:
+                continue
+
+            if "alert" in entity and "alert" in orig_entity:
+                alert = entity["alert"]
+                orig_alert = orig_entity["alert"]
+                for field in FeedProcessor.EXPERIMENTAL_ALERT_FIELDS:
+                    if field in orig_alert and field not in alert:
+                        alert[field] = orig_alert[field]
+
     @staticmethod
     def _merge_enhanced_fields(current: dict[str, Any], original: dict[str, Any]) -> None:
         """
         Recursively merges fields from original JSON that are missing in current JSON.
-        This preserves 'enhanced' fields (like effect_detail, activities) that Protobuf
+        This preserves 'enhanced' fields (like activities) that Protobuf
         doesn't know about.
         """
         # Map original entities by ID for easy lookup
