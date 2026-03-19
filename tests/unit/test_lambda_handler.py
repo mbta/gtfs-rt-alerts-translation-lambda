@@ -9,10 +9,9 @@ os.environ["SMARTLING_USER_ID"] = "test"
 os.environ["SMARTLING_USER_SECRET"] = "test"
 os.environ["SMARTLING_ACCOUNT_UID"] = "test"
 
-from google.transit import gtfs_realtime_pb2
-
 from gtfs_translation.core.processor import ProcessingMetrics
 from gtfs_translation.lambda_handler import lambda_handler, should_upload
+from gtfs_translation.proto import gtfs_realtime_pb2
 
 
 def test_lambda_handler_s3_event(mocker: MockerFixture) -> None:

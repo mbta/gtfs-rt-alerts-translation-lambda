@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 
 from gtfs_translation.core.processor import FeedProcessor
+from gtfs_translation.proto import gtfs_realtime_pb2
 
 
 @pytest.fixture
@@ -90,6 +91,50 @@ class TestCauseEffectDetailJsonOutput:
         assert alert["effect_detail"] == "STATION_ISSUE"
         assert isinstance(alert["cause_detail"], str)
         assert isinstance(alert["effect_detail"], str)
+
+
+class TestCauseEffectDetailProtobufOutput:
+    """Test that cause_detail and effect_detail are TranslatedString with English in PB output."""
+
+    def test_pb_output_has_cause_detail_as_translated_string(
+        self, feed_with_cause_effect_detail_json: dict[str, Any]
+    ) -> None:
+        """cause_detail should be a TranslatedString with English text in PB output."""
+        source_json = feed_with_cause_effect_detail_json
+        content = json.dumps(source_json).encode("utf-8")
+
+        feed = FeedProcessor.parse(content, "json", original_json=source_json)
+
+        # Serialize to PB and parse back
+        pb_output = FeedProcessor.serialize(feed, "pb")
+        parsed_feed = gtfs_realtime_pb2.FeedMessage()
+        parsed_feed.ParseFromString(pb_output)
+
+        alert = parsed_feed.entity[0].alert
+        assert alert.HasField("cause_detail")
+        assert len(alert.cause_detail.translation) == 1
+        assert alert.cause_detail.translation[0].text == "CONSTRUCTION"
+        assert alert.cause_detail.translation[0].language == "en"
+
+    def test_pb_output_has_effect_detail_as_translated_string(
+        self, feed_with_cause_effect_detail_json: dict[str, Any]
+    ) -> None:
+        """effect_detail should be a TranslatedString with English text in PB output."""
+        source_json = feed_with_cause_effect_detail_json
+        content = json.dumps(source_json).encode("utf-8")
+
+        feed = FeedProcessor.parse(content, "json", original_json=source_json)
+
+        # Serialize to PB and parse back
+        pb_output = FeedProcessor.serialize(feed, "pb")
+        parsed_feed = gtfs_realtime_pb2.FeedMessage()
+        parsed_feed.ParseFromString(pb_output)
+
+        alert = parsed_feed.entity[0].alert
+        assert alert.HasField("effect_detail")
+        assert len(alert.effect_detail.translation) == 1
+        assert alert.effect_detail.translation[0].text == "STATION_ISSUE"
+        assert alert.effect_detail.translation[0].language == "en"
 
 
 class TestCauseEffectDetailNotTranslated:

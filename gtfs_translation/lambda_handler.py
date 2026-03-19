@@ -4,7 +4,6 @@ from typing import Any
 from urllib.parse import unquote_plus
 
 import boto3
-from google.transit import gtfs_realtime_pb2
 
 from gtfs_translation.config import settings
 from gtfs_translation.core.fetcher import (
@@ -18,6 +17,7 @@ from gtfs_translation.core.smartling import (
     SmartlingJobBatchesTranslator,
     SmartlingTranslator,
 )
+from gtfs_translation.proto import gtfs_realtime_pb2
 
 NOTICE_LEVEL = 25
 logging.addLevelName(NOTICE_LEVEL, "NOTICE")
