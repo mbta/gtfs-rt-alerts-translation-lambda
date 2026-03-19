@@ -1,10 +1,10 @@
 """Tests for processor with es-419 language code."""
 
 import pytest
-from google.transit import gtfs_realtime_pb2
 
 from gtfs_translation.core.processor import FeedProcessor
 from gtfs_translation.core.translator import MockTranslator
+from gtfs_translation.proto import gtfs_realtime_pb2
 
 
 @pytest.mark.asyncio

@@ -5,10 +5,10 @@ from typing import Any
 import boto3
 import botocore
 import httpx
-from google.transit import gtfs_realtime_pb2
 
 from gtfs_translation.config import settings
 from gtfs_translation.core.processor import FeedFormat, FeedProcessor
+from gtfs_translation.proto import gtfs_realtime_pb2
 
 logger = logging.getLogger(__name__)
 s3 = boto3.client("s3")

@@ -6,14 +6,25 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
 from google.protobuf import json_format
-from google.transit import gtfs_realtime_pb2
 
 from gtfs_translation.config import from_smartling_code
+from gtfs_translation.proto import gtfs_realtime_pb2
 
 if TYPE_CHECKING:
     from gtfs_translation.core.translator import Translator
 
 FeedFormat = Literal["json", "pb"]
+
+# Field names in Alert that contain TranslatedString and should be translated
+TranslatableFieldName = Literal[
+    "header_text", "description_text", "tts_header_text", "tts_description_text"
+]
+TRANSLATABLE_FIELDS: tuple[TranslatableFieldName, ...] = (
+    "header_text",
+    "description_text",
+    "tts_header_text",
+    "tts_description_text",
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +45,11 @@ class ProcessingMetrics:
 
 class FeedProcessor:
     @staticmethod
-    def parse(content: bytes, fmt: FeedFormat) -> gtfs_realtime_pb2.FeedMessage:
+    def parse(
+        content: bytes,
+        fmt: FeedFormat,
+        original_json: dict[str, Any] | None = None,
+    ) -> gtfs_realtime_pb2.FeedMessage:
         feed = gtfs_realtime_pb2.FeedMessage()
 
         if fmt == "pb":
@@ -44,10 +59,61 @@ class FeedProcessor:
             # We use ignore_unknown_fields=True to allow parsing MBTA "Enhanced" JSON
             # which contains non-standard fields.
             json_format.Parse(json_str, feed, ignore_unknown_fields=True)
+
+            # Convert raw string experimental fields to TranslatedString
+            # The MBTA feed uses cause_detail/effect_detail as raw strings,
+            # but they should be TranslatedString in protobuf
+            if original_json is None:
+                original_json = json.loads(json_str)
+            FeedProcessor._convert_experimental_fields_to_translated_string(feed, original_json)
         else:
             raise ValueError(f"Unsupported format: {fmt}")
 
         return feed
+
+    @staticmethod
+    def _convert_experimental_fields_to_translated_string(
+        feed: gtfs_realtime_pb2.FeedMessage,
+        original_json: dict[str, Any],
+    ) -> None:
+        """
+        Convert raw string experimental fields to TranslatedString in the protobuf.
+
+        The MBTA feed uses cause_detail/effect_detail as raw strings, but the GTFS-RT
+        spec defines them as TranslatedString. When protobuf parses a raw string for
+        these fields, it creates an empty TranslatedString. We populate it with the
+        original string value as English text.
+        """
+        orig_entities = {e.get("id"): e for e in original_json.get("entity", []) if "id" in e}
+
+        for entity in feed.entity:
+            if not entity.HasField("alert"):
+                continue
+
+            orig_entity = orig_entities.get(entity.id)
+            if not orig_entity or "alert" not in orig_entity:
+                continue
+
+            alert = entity.alert
+            orig_alert = orig_entity["alert"]
+
+            for field_name in FeedProcessor.EXPERIMENTAL_ALERT_FIELDS:
+                if field_name not in orig_alert:
+                    continue
+
+                orig_value = orig_alert[field_name]
+                # Only convert if original is a raw string
+                if not isinstance(orig_value, str):
+                    continue
+
+                # Get the TranslatedString field and populate it
+                ts = getattr(alert, field_name)
+                # Clear any existing (empty) translations
+                del ts.translation[:]
+                # Add the English translation
+                t = ts.translation.add()
+                t.text = orig_value
+                t.language = "en"
 
     @staticmethod
     def serialize(
@@ -149,8 +215,9 @@ class FeedProcessor:
         Merge experimental GTFS-RT fields from original JSON.
 
         These fields (cause_detail, effect_detail) are defined in the GTFS-RT spec as
-        TranslatedString but our protobuf bindings don't include them. The MBTA feed
-        uses them as raw strings. We preserve them as-is without translation.
+        TranslatedString but the MBTA feed uses them as raw strings. When protobuf
+        parses a raw string for a TranslatedString field, it creates an empty object.
+        We replace empty objects with the original raw string values.
         """
         orig_entities = {e.get("id"): e for e in original.get("entity", []) if "id" in e}
 
@@ -164,8 +231,15 @@ class FeedProcessor:
                 alert = entity["alert"]
                 orig_alert = orig_entity["alert"]
                 for field in FeedProcessor.EXPERIMENTAL_ALERT_FIELDS:
-                    if field in orig_alert and field not in alert:
-                        alert[field] = orig_alert[field]
+                    if field in orig_alert:
+                        orig_value = orig_alert[field]
+                        # If original is a raw string (MBTA format), preserve it
+                        # This replaces any empty TranslatedString ({}) from protobuf parsing
+                        if isinstance(orig_value, str):
+                            alert[field] = orig_value
+                        # If original is already a TranslatedString dict, only merge if missing
+                        elif field not in alert:
+                            alert[field] = orig_value
 
     @staticmethod
     def _merge_enhanced_fields(current: dict[str, Any], original: dict[str, Any]) -> None:
@@ -270,12 +344,7 @@ class FeedProcessor:
             if not entity.HasField("alert"):
                 continue
             alert = entity.alert
-            for field_name in [
-                "header_text",
-                "description_text",
-                "tts_header_text",
-                "tts_description_text",
-            ]:
+            for field_name in TRANSLATABLE_FIELDS:
                 if not alert.HasField(field_name):
                     continue
                 ts = getattr(alert, field_name)
@@ -290,10 +359,10 @@ class FeedProcessor:
                 if not alert_orig:
                     continue
 
-                for field_name in ["service_effect_text", "timeframe_text"]:
-                    if field_name in alert_orig:
+                for enhanced_field in ["service_effect_text", "timeframe_text"]:
+                    if enhanced_field in alert_orig:
                         cls._apply_translations_json(
-                            alert_orig[field_name], translation_map, target_langs
+                            alert_orig[enhanced_field], translation_map, target_langs
                         )
 
         # Process URLs
@@ -424,12 +493,7 @@ class FeedProcessor:
             if not entity.HasField("alert"):
                 continue
             alert = entity.alert
-            for field_name in [
-                "header_text",
-                "description_text",
-                "tts_header_text",
-                "tts_description_text",
-            ]:
+            for field_name in TRANSLATABLE_FIELDS:
                 if not alert.HasField(field_name):
                     continue
                 ts = getattr(alert, field_name)
@@ -442,10 +506,10 @@ class FeedProcessor:
                 if not alert_orig:
                     continue
 
-                for field_name in ["service_effect_text", "timeframe_text"]:
-                    if field_name in alert_orig:
+                for enhanced_field in ["service_effect_text", "timeframe_text"]:
+                    if enhanced_field in alert_orig:
                         cls._apply_translations_json(
-                            alert_orig[field_name], translation_map, target_langs
+                            alert_orig[enhanced_field], translation_map, target_langs
                         )
 
         # Process URLs
@@ -479,12 +543,7 @@ class FeedProcessor:
                     continue
                 alert = entity.alert
 
-                for field_name in [
-                    "header_text",
-                    "description_text",
-                    "tts_header_text",
-                    "tts_description_text",
-                ]:
+                for field_name in TRANSLATABLE_FIELDS:
                     if not alert.HasField(field_name):
                         continue
                     ts = getattr(alert, field_name)
@@ -501,12 +560,7 @@ class FeedProcessor:
 
                 # Process standard PB fields from JSON (for old feeds)
                 if include_all_translations:
-                    for field_name in [
-                        "header_text",
-                        "description_text",
-                        "tts_header_text",
-                        "tts_description_text",
-                    ]:
+                    for field_name in TRANSLATABLE_FIELDS:
                         if field_name in alert_orig:
                             translations = cls._extract_translations_from_json(
                                 alert_orig[field_name], include_all_translations
@@ -515,10 +569,10 @@ class FeedProcessor:
                                 result[english].update(trans_dict)
 
                 # Process enhanced fields
-                for field_name in ["service_effect_text", "timeframe_text"]:
-                    if field_name in alert_orig:
+                for enhanced_field in ["service_effect_text", "timeframe_text"]:
+                    if enhanced_field in alert_orig:
                         translations = cls._extract_translations_from_json(
-                            alert_orig[field_name], include_all_translations
+                            alert_orig[enhanced_field], include_all_translations
                         )
                         for english, trans_dict in translations.items():
                             result[english].update(trans_dict)

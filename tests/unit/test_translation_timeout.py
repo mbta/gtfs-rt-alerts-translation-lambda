@@ -5,9 +5,9 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from google.transit import gtfs_realtime_pb2
 
 from gtfs_translation.lambda_handler import run_translation
+from gtfs_translation.proto import gtfs_realtime_pb2
 
 
 @pytest.fixture
