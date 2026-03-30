@@ -21,7 +21,7 @@ jobs:
           persist-credentials: false
 
       - name: Install mise
-        uses: jdx/mise-action@e79ddf65a11cec7b0e882bedced08d6e976efb2d # v3
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v3
 
       - name: Install dependencies
         run: mise run setup
@@ -86,7 +86,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[artipacked]
 
       - name: Install mise
-        uses: jdx/mise-action@e79ddf65a11cec7b0e882bedced08d6e976efb2d # v3
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v3
 
       - name: Build Zip
         run: |
