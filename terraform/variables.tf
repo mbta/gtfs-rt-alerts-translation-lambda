@@ -137,8 +137,22 @@ variable "reserved_concurrent_executions" {
   default     = 1
 }
 
+variable "aws_region" {
+  type        = string
+  description = "The AWS region where the environment and its resources will be provisioned."
+}
+
+variable "aws_account_id" {
+  type        = string
+  description = "The numerical account ID of the AWS account where the environment and its resources will be provisioned."
+}
+
 variable "tags" {
   description = "Resource tags"
   type        = map(string)
   default     = {}
+}
+
+variable "context" {
+  description = "Global context of shared attributes used by all modules"
 }

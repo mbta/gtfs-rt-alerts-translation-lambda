@@ -189,3 +189,17 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
 
   depends_on = [aws_lambda_permission.s3]
 }
+
+# Forward Lambda logs to Splunk
+module "lambda-log-forwarding" {
+  source                 = "mbta.scalr.io/acc-u84nmotk4l49d30/splunk-lambda/aws"
+  version                = "2.0.1"
+  lambda_name            = "splunk-${var.function_name}-lambda-logs"
+  lambda_splunk_role_arn = var.context.splunk_lambda_iam_role_arn
+  splunk_index           = var.function_name
+  log_group_name         = "/aws/lambda/${var.function_name}"
+  aws_region             = var.aws_region
+  aws_account_id         = var.aws_account_id
+  tags                   = var.tags
+  context                = var.context
+}
