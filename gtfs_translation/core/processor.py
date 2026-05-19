@@ -1,14 +1,17 @@
 import asyncio
 import json
 import logging
+import time
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
 from google.protobuf import json_format
 
-from gtfs_translation.config import from_smartling_code
+from gtfs_translation.config import from_smartling_code, settings
 from gtfs_translation.proto import gtfs_realtime_pb2
+
+NOTICE_LEVEL = settings.notice_level
 
 if TYPE_CHECKING:
     from gtfs_translation.core.translator import Translator
@@ -470,6 +473,7 @@ class FeedProcessor:
             )
 
             async with semaphore:
+                translation_step_start_time_ns = time.time_ns()
                 translations_by_lang = await translator.translate_batch(
                     all_needed_english, target_langs
                 )
@@ -480,6 +484,12 @@ class FeedProcessor:
                     for english, translated in zip(all_needed_english, translations, strict=True):
                         if translated is not None:
                             translation_map[english][lang] = translated
+                logger.log(
+                    NOTICE_LEVEL,
+                    "Translation process step translator: %s time: %.2f ns",
+                    translator.__class__.__name__,
+                    (time.time_ns() - translation_step_start_time_ns),
+                )
 
         # 3. Apply translations back to the feed
         # For empty/whitespace English strings, insert empty translations
