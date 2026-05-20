@@ -31,6 +31,8 @@ module "gtfs_translator" {
   tags = {
     Project = "GTFS-Translation"
   }
+
+  request_real_translations = false
 }
 ```
 
@@ -50,6 +52,7 @@ module "gtfs_translator" {
 | `lambda_architectures` | Lambda architecture list | `list(string)` | `["arm64"]` | no |
 | `reserved_concurrent_executions` | Reserved concurrency for the Lambda | `number` | `1` | no |
 | `tags` | Resource tags | `map(string)` | `{}` | no |
+| `request_real_translations` | Toggle real Smartling translations on/off | `bool` | `false` | yes
 
 ### Trigger Object Schema
 

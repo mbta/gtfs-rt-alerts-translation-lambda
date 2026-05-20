@@ -29,6 +29,7 @@ The application is configured via environment variables:
 | `SMARTLING_ACCOUNT_UID` | Smartling Account UID (required for MT Router API, not used with Job Batches) | - |
 | `SMARTLING_PROJECT_ID` | Smartling Project ID (required for Job Batches API, leave empty for MT Router API) | - |
 | `SMARTLING_JOB_NAME_TEMPLATE` | Template for Smartling job names when using Job Batches API | `"GTFS Alerts Translation"` |
+| `REQUEST_REAL_TRANSLATIONS`   | It is costly to request real Smartling translations for dev and staging environments. This allows us to toggle it off and use a MockTranslator() for non-prod testing. | (required) |
 | `SOURCE_URL` | Default HTTP or S3 URL for source feed (e.g., `https://example.com/alerts.json` or `s3://bucket/alerts.pb`) | (required) |
 | `DESTINATION_BUCKET_URLS` | Comma-separated S3 URLs for translated output (e.g., `s3://bucket/alerts.pb,s3://bucket/alerts.json`) | (required) |
 | `TARGET_LANGUAGES` | Comma-separated language codes (e.g., `es-419,fr,pt`). Uses GTFS standard codes. | `es-419` |
