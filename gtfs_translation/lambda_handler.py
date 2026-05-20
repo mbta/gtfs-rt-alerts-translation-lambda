@@ -17,6 +17,7 @@ from gtfs_translation.core.smartling import (
     SmartlingJobBatchesTranslator,
     SmartlingTranslator,
 )
+from gtfs_translation.core.translator import MockTranslator
 from gtfs_translation.proto import gtfs_realtime_pb2
 
 NOTICE_LEVEL = 25
@@ -101,7 +102,9 @@ async def run_translation(source_url: str, dest_urls: list[str]) -> None:
     old_feed, dest_json = await fetch_old_feed(ref_dest_url, ref_fmt)
 
     # 3. Translate
-    translator: SmartlingTranslator
+    translator: SmartlingTranslator | MockTranslator
+    if not settings.request_real_translations:
+        translator = MockTranslator()
     if settings.smartling_project_id:
         translator = SmartlingJobBatchesTranslator(
             settings.smartling_user_id,

@@ -15,6 +15,7 @@ from gtfs_translation.core.smartling import (
     SmartlingJobBatchesTranslator,
     SmartlingTranslator,
 )
+from gtfs_translation.core.translator import MockTranslator
 
 
 async def run_local(source_url: str, target_langs: list[str], enhanced: bool = False) -> None:
@@ -40,7 +41,9 @@ async def run_local(source_url: str, target_langs: list[str], enhanced: bool = F
         original_json = json.loads(content.decode("utf-8"))
 
     # 2. Translate (no old feed/caching for local test run usually)
-    translator: SmartlingTranslator
+    translator: SmartlingTranslator | MockTranslator
+    if not settings.request_real_translations:
+        translator = MockTranslator()
     if settings.smartling_project_id:
         translator = SmartlingJobBatchesTranslator(
             settings.smartling_user_id,
