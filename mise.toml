@@ -11,7 +11,7 @@ run = "uv run ruff format . && uv run ruff check . --fix"
 
 [tasks.test]
 description = "Run tests"
-env = { SMARTLING_USER_ID = "", SMARTLING_USER_SECRET = "", SMARTLING_USER_SECRET_ARN = "", SMARTLING_ACCOUNT_UID = "", SMARTLING_PROJECT_ID = "" }
+env = { SMARTLING_USER_ID = "", SMARTLING_USER_SECRET = "", SMARTLING_USER_SECRET_ARN = "", SMARTLING_ACCOUNT_UID = "", SMARTLING_PROJECT_ID = "", REQUEST_REAL_TRANSLATIONS = "false" }
 run = "uv run pytest"
 
 [tasks.check]
@@ -47,4 +47,5 @@ rm -rf dist requirements.txt
 
 [tasks.run-local]
 description = "Run translation locally and print to stdout"
+env = { REQUEST_REAL_TRANSLATIONS = "true" }
 run = "uv run python scripts/run_local.py"
