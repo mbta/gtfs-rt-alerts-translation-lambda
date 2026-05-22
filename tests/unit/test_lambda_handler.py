@@ -8,6 +8,7 @@ from pytest_mock import MockerFixture
 os.environ["SMARTLING_USER_ID"] = "test"
 os.environ["SMARTLING_USER_SECRET"] = "test"
 os.environ["SMARTLING_ACCOUNT_UID"] = "test"
+os.environ["REQUEST_REAL_TRANSLATIONS"] = "false"
 
 from gtfs_translation.core.processor import ProcessingMetrics
 from gtfs_translation.lambda_handler import lambda_handler, should_upload

@@ -34,6 +34,10 @@ class Settings:
         self.concurrency_limit = int(os.environ.get("CONCURRENCY_LIMIT", "20"))
         self.log_level = os.environ.get("LOG_LEVEL", "NOTICE")
         self.translation_timeout = int(os.environ.get("TRANSLATION_TIMEOUT", "50"))
+        # LB TODO Can remove the default value here after we merge DevOps
+        self.request_real_translations = (
+            os.environ.get("REQUEST_REAL_TRANSLATIONS", "true") == "true"
+        )
 
     @property
     def destination_bucket_url_list(self) -> list[str]:

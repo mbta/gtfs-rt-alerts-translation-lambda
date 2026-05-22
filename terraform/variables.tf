@@ -4,6 +4,12 @@ variable "function_name" {
   default     = "gtfs-alerts-translator"
 }
 
+variable "request_real_translations" {
+  description = "Allows us to turn off real requests to Smartling in favor of using a mock translator, for the purposes of saving costs"
+  type        = bool
+  default     = false
+}
+
 variable "is_temporary" {
   description = "Whether resources should be configured for easy cleanup"
   type        = bool

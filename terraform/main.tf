@@ -115,6 +115,7 @@ resource "aws_lambda_function" "translation_function" {
 
   environment {
     variables = {
+      REQUEST_REAL_TRANSLATIONS = var.request_real_translations
       SMARTLING_USER_ID         = var.smartling_user_id
       SMARTLING_USER_SECRET_ARN = aws_secretsmanager_secret.smartling_secret.arn
       SMARTLING_ACCOUNT_UID     = var.smartling_account_uid
