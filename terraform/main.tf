@@ -135,7 +135,8 @@ resource "aws_lambda_function" "translation_function" {
   }
 
   depends_on = [
-    aws_cloudwatch_log_group.lambda_logs
+    aws_cloudwatch_log_group.lambda_logs,
+    module.lambda-log-forwarding.managed_log_group
   ]
 
   tags = var.tags
