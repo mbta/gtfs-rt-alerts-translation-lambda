@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 permissions: {}
 
@@ -53,24 +53,28 @@ jobs:
         with:
           tofu_version: ${{ env.TOFU_VERSION }}
 
-      - name: Tofu fmt
-        run: tofu fmt -check -recursive terraform
+      - uses: Scalr/scalr-action@33132605fdcdd67e7cf8eaa0524fb7145c37e7b1 #v1
+        with:
+          scalr_hostname: mbta.scalr.io
+          scalr_token: ${{ secrets.SCALR_TOKEN }}
+          scalr_workspace: ${{ secrets.SCALR_WORKSPACE }}
+          iac_platform: tofu
+          binary_version: ${{ env.TOFU_VERSION }}
+          binary_output: true
 
-      - name: Tofu validate (module)
-        run: |
-          cd terraform
-          tofu init -backend=false
-          tofu validate
+      - name: Tofu format and validate (module)
+        uses: mbta/actions/check-tofu@6cff1d5eef7e0d780190353278bc84fdf6177dab # v2
+        with:
+          directories: "terraform"
 
       - name: Tofu test (module)
         run: |
           tofu -chdir=terraform test
 
-      - name: Tofu validate (example)
-        run: |
-          cd terraform/example
-          tofu init -backend=false
-          tofu validate
+      - name: Tofu format and validate (example)
+        uses: mbta/actions/check-tofu@6cff1d5eef7e0d780190353278bc84fdf6177dab # v2
+        with:
+          directories: "terraform/example"
 
   build:
     name: Build & Commit Zip
