@@ -57,7 +57,6 @@ jobs:
         with:
           scalr_hostname: mbta.scalr.io
           scalr_token: ${{ secrets.SCALR_TOKEN }}
-          scalr_workspace: ${{ secrets.SCALR_WORKSPACE }}
           iac_platform: tofu
           binary_version: ${{ env.TOFU_VERSION }}
           binary_output: true
