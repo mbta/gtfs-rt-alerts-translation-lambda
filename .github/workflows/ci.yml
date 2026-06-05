@@ -48,11 +48,6 @@ jobs:
       - name: Read OpenTofu version
         run: echo "TOFU_VERSION=$(cut -d' ' -f2 terraform/.tool-versions)" >> $GITHUB_ENV
 
-      - name: Install OpenTofu
-        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
-        with:
-          tofu_version: ${{ env.TOFU_VERSION }}
-
       - uses: Scalr/scalr-action@33132605fdcdd67e7cf8eaa0524fb7145c37e7b1 #v1
         with:
           scalr_hostname: mbta.scalr.io
@@ -60,6 +55,16 @@ jobs:
           iac_platform: tofu
           binary_version: ${{ env.TOFU_VERSION }}
           binary_output: true
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Tofu init
+        run: |
+          cd terraform
+          tofu init -backend=false
 
       - name: Tofu format and validate (module)
         uses: mbta/actions/check-tofu@6cff1d5eef7e0d780190353278bc84fdf6177dab # v2
