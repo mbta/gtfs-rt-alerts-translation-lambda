@@ -20,6 +20,7 @@ def from_smartling_code(lang: str) -> str:
 
 class Settings:
     def __init__(self) -> None:
+        self.notice_level = 25
         self.smartling_user_id = os.environ.get("SMARTLING_USER_ID", "")
         self.smartling_user_secret = os.environ.get("SMARTLING_USER_SECRET", "")
         self.smartling_user_secret_arn = os.environ.get("SMARTLING_USER_SECRET_ARN", "")

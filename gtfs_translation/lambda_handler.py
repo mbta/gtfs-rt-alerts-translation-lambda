@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from typing import Any
 from urllib.parse import unquote_plus
 
@@ -20,7 +21,7 @@ from gtfs_translation.core.smartling import (
 from gtfs_translation.core.translator import MockTranslator
 from gtfs_translation.proto import gtfs_realtime_pb2
 
-NOTICE_LEVEL = 25
+NOTICE_LEVEL = settings.notice_level
 logging.addLevelName(NOTICE_LEVEL, "NOTICE")
 
 logger = logging.getLogger(__name__)
@@ -220,6 +221,12 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     if not dest_urls:
         raise ValueError("DESTINATION_BUCKET_URLS must be configured")
 
+    full_translation_process_start_time_ns = time.time_ns()
     asyncio.run(run_translation(source_url, dest_urls))
+    logger.log(
+        NOTICE_LEVEL,
+        "Total translation process time: %.2f ns",
+        (time.time_ns() - full_translation_process_start_time_ns),
+    )
 
     return {"statusCode": 200, "body": "Translation completed"}
