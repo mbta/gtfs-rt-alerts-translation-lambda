@@ -2,7 +2,7 @@
 
 These experimental GTFS-RT fields should:
 1. Not be translated (remain English-only TranslatedString in PB output)
-2. Be serialized as raw strings in JSON output (not TranslatedString objects)
+2. Be serialized as TranslatedString objects or raw strings in JSON output
 """
 
 import json
@@ -16,7 +16,7 @@ from gtfs_translation.proto import gtfs_realtime_pb2
 
 @pytest.fixture
 def feed_with_cause_effect_detail_translated_string_json() -> dict[str, Any]:
-    """Source JSON with cause_detail and effect_detail as raw strings (MBTA format)."""
+    """Source JSON with cause_detail and effect_detail as Translated Strings (MBTA format)."""
     return {
         "header": {"gtfs_realtime_version": "2.0", "timestamp": 1234567890},
         "entity": [
