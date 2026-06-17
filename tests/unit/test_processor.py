@@ -513,9 +513,7 @@ def test_serialize_standard_json_with_raw_string_effect_detail_excludes_enhanced
     assert informed_entity["route_type"] == 2
 
 
-def test_serialize_standard_json_with_translated_string_effect_detail_excludes_enhanced_fields() -> (
-    None
-):
+def test_serialize_standard_json_translated_string_effect_detail_excludes_enhanced_fields() -> None:
     """Test that standard JSON output (enhanced=False) excludes non-Protobuf fields."""
     import json
 
