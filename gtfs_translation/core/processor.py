@@ -385,7 +385,6 @@ class FeedProcessor:
         concurrency_limit: int = 20,
         source_json: dict[str, Any] | None = None,
         dest_json: dict[str, Any] | None = None,
-        request_real_translations: str = "False",
     ) -> ProcessingMetrics:
         """
         Translates the feed in-place.
