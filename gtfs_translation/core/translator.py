@@ -17,7 +17,7 @@ class Translator(ABC):
 
 
 class MockTranslator(Translator):
-    async def close(self):
+    async def close(self) -> None:
         print("I am closed!")
 
     async def translate_batch(
