@@ -137,6 +137,7 @@ async def run_translation(source_url: str, dest_urls: list[str]) -> None:
                     concurrency_limit=settings.concurrency_limit,
                     source_json=source_json,
                     dest_json=dest_json,
+                    request_real_translations=settings.request_real_translations,
                 ),
                 timeout=settings.translation_timeout,
             )

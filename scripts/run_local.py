@@ -42,9 +42,9 @@ async def run_local(source_url: str, target_langs: list[str], enhanced: bool = F
 
     # 2. Translate (no old feed/caching for local test run usually)
     translator: SmartlingTranslator | MockTranslator
-    if not settings.request_real_translations:
+    if settings.request_real_translations == "false":
         translator = MockTranslator()
-    if settings.smartling_project_id:
+    elif settings.smartling_project_id:
         translator = SmartlingJobBatchesTranslator(
             settings.smartling_user_id,
             settings.smartling_user_secret,
@@ -67,6 +67,7 @@ async def run_local(source_url: str, target_langs: list[str], enhanced: bool = F
             target_langs,
             concurrency_limit=settings.concurrency_limit,
             source_json=original_json,
+            request_real_translations=settings.request_real_translations,
         )
 
         # 3. Serialize and print to stdout

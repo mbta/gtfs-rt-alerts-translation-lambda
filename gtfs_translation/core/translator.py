@@ -17,6 +17,9 @@ class Translator(ABC):
 
 
 class MockTranslator(Translator):
+    async def close(self):
+        print("I am closed!")
+
     async def translate_batch(
         self, texts: list[str], target_langs: list[str]
     ) -> dict[str, list[str | None]]:
