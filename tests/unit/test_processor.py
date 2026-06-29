@@ -450,7 +450,7 @@ def test_serialize_preserves_informed_entity_fields() -> None:
             )
 
 
-def test_serialize_standard_json_excludes_enhanced_fields() -> None:
+def test_serialize_standard_json_with_raw_string_effect_detail_excludes_enhanced_fields() -> None:
     """Test that standard JSON output (enhanced=False) excludes non-Protobuf fields."""
     import json
 
@@ -464,7 +464,7 @@ def test_serialize_standard_json_excludes_enhanced_fields() -> None:
             {
                 "id": "alert1",
                 "alert": {
-                    "effect_detail": "SNOW",  # Enhanced field
+                    "effect_detail": "SNOW",
                     "informed_entity": [
                         {
                             "stop_id": "NEC-1851-03",
@@ -504,7 +504,7 @@ def test_serialize_standard_json_excludes_enhanced_fields() -> None:
 
     # Experimental GTFS-RT fields (cause_detail, effect_detail) SHOULD be present
     # These are part of the spec, just not in our protobuf bindings
-    assert alert["effect_detail"] == "SNOW", "effect_detail should be preserved in standard JSON"
+    assert alert["effect_detail"] == "SNOW"
 
     # Standard Protobuf fields should still be present
     assert "header_text" in alert
