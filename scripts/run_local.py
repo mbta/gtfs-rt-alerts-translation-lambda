@@ -40,24 +40,26 @@ async def run_local(source_url: str, target_langs: list[str], enhanced: bool = F
 
         original_json = json.loads(content.decode("utf-8"))
 
-    # 2. Translate (no old feed/caching for local test run usually)
     translator: SmartlingTranslator | MockTranslator
-    if not settings.request_real_translations:
-        translator = MockTranslator()
-    if settings.smartling_project_id:
-        translator = SmartlingJobBatchesTranslator(
-            settings.smartling_user_id,
-            settings.smartling_user_secret,
-            settings.smartling_project_id,
-            source_url,
-            job_name_template=settings.smartling_job_name_template,
-        )
+    # 2. Translate (no old feed/caching for local test run usually)
+    if settings.request_real_translations == "true":
+        # Use Smartling if project_id is present; otherwise fallback to file translator
+        if settings.smartling_project_id:
+            translator = SmartlingJobBatchesTranslator(
+                settings.smartling_user_id,
+                settings.smartling_user_secret,
+                settings.smartling_project_id,
+                source_url,
+                job_name_template=settings.smartling_job_name_template,
+            )
+        else:
+            translator = SmartlingFileTranslator(
+                settings.smartling_user_id,
+                settings.smartling_user_secret,
+                settings.smartling_account_uid,
+            )
     else:
-        translator = SmartlingFileTranslator(
-            settings.smartling_user_id,
-            settings.smartling_user_secret,
-            settings.smartling_account_uid,
-        )
+        translator = MockTranslator()
 
     try:
         metrics = await FeedProcessor.process_feed(
