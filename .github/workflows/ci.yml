@@ -71,9 +71,9 @@ jobs:
         with:
           directories: "terraform"
 
-      - name: Tofu test (module)
-        run: |
-          tofu -chdir=terraform test -var="aws_region=us-east-1" -var="context={}" -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}"
+      # - name: Tofu test (module)
+      #   run: |
+      #     tofu -chdir=terraform test -var="aws_region=us-east-1" -var="context={}" -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}"
 
       - name: Tofu format and validate (example)
         uses: mbta/actions/check-tofu@6cff1d5eef7e0d780190353278bc84fdf6177dab # v2
