@@ -40,6 +40,7 @@ async def run_local(source_url: str, target_langs: list[str], enhanced: bool = F
 
         original_json = json.loads(content.decode("utf-8"))
 
+    translator: SmartlingTranslator | MockTranslator
     # 2. Translate (no old feed/caching for local test run usually)
     if settings.request_real_translations == "true":
         # Use Smartling if project_id is present; otherwise fallback to file translator
