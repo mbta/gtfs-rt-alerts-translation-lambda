@@ -486,7 +486,7 @@ class FeedProcessor:
                             translation_map[english][lang] = translated
                 logger.log(
                     NOTICE_LEVEL,
-                    "Translation process step translator: %s time: %.2f ns",
+                    "Translation process step translator=%s time=%.2f ns",
                     translator.__class__.__name__,
                     (time.time_ns() - translation_step_start_time_ns),
                 )
