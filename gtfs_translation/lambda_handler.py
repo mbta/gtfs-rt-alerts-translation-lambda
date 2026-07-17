@@ -225,7 +225,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     asyncio.run(run_translation(source_url, dest_urls))
     logger.log(
         NOTICE_LEVEL,
-        "Total translation process time: %.2f ns",
+        "Total translation process time=%.2f ns",
         (time.time_ns() - full_translation_process_start_time_ns),
     )
 
