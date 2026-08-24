@@ -60,7 +60,7 @@ This logging helped identify that keys were slightly different due to whitespace
 
 Enhanced JSON field extraction was already implemented correctly in `_gather_translations_from_feed`. The method properly iterates through:
 - PB fields: `header_text`, `description_text`
-- JSON enhanced fields: `service_effect_text`, `timeframe_text`
+- JSON enhanced fields: `service_effect_text`, `timeframe_text`, `recurrence_text`
 
 The fix was actually in whitespace normalization, which made the keys match properly.
 

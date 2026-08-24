@@ -362,7 +362,7 @@ class FeedProcessor:
                 if not alert_orig:
                     continue
 
-                for enhanced_field in ["service_effect_text", "timeframe_text"]:
+                for enhanced_field in ["service_effect_text", "timeframe_text", "recurrence_text"]:
                     if enhanced_field in alert_orig:
                         cls._apply_translations_json(
                             alert_orig[enhanced_field], translation_map, target_langs
@@ -516,7 +516,7 @@ class FeedProcessor:
                 if not alert_orig:
                     continue
 
-                for enhanced_field in ["service_effect_text", "timeframe_text"]:
+                for enhanced_field in ["service_effect_text", "timeframe_text", "recurrence_text"]:
                     if enhanced_field in alert_orig:
                         cls._apply_translations_json(
                             alert_orig[enhanced_field], translation_map, target_langs
@@ -579,7 +579,7 @@ class FeedProcessor:
                                 result[english].update(trans_dict)
 
                 # Process enhanced fields
-                for enhanced_field in ["service_effect_text", "timeframe_text"]:
+                for enhanced_field in ["service_effect_text", "timeframe_text", "recurrence_text"]:
                     if enhanced_field in alert_orig:
                         translations = cls._extract_translations_from_json(
                             alert_orig[enhanced_field], include_all_translations
