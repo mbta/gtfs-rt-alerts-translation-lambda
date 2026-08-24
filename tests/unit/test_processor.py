@@ -165,7 +165,19 @@ async def test_process_feed_reuse_enhanced_json_translations() -> None:
                             {"language": "en", "text": "ongoing"},
                             {"language": "es", "text": "en curso"},
                         ]
-                    }
+                    },
+                    "timeframe_text": {
+                        "translation": [
+                            {"language": "en", "text": "ongoing"},
+                            {"language": "es", "text": "en curso"},
+                        ]
+                    },
+                    "recurrence_text": {
+                        "translation": [
+                            {"language": "en", "text": "weekdays"},
+                            {"language": "es", "text": "días laborables"},
+                        ]
+                    },
                 },
             }
         ]
@@ -176,7 +188,9 @@ async def test_process_feed_reuse_enhanced_json_translations() -> None:
             {
                 "id": "alert1",
                 "alert": {
-                    "service_effect_text": {"translation": [{"language": "en", "text": "ongoing"}]}
+                    "service_effect_text": {"translation": [{"language": "en", "text": "ongoing"}]},
+                    "timeframe_text": {"translation": [{"language": "en", "text": "ongoing"}]},
+                    "recurrence_text": {"translation": [{"language": "en", "text": "weekdays"}]},
                 },
             }
         ]
@@ -480,6 +494,9 @@ def test_serialize_standard_json_with_raw_string_effect_detail_excludes_enhanced
                     "timeframe_text": {  # Enhanced field
                         "translation": [{"text": "Now", "language": "en"}]
                     },
+                    "recurrence_text": {  # Enhanced field
+                        "translation": [{"text": "weekdays", "language": "en"}]
+                    },
                     "header_text": {"translation": [{"text": "Test", "language": "en"}]},
                 },
             }
@@ -498,6 +515,7 @@ def test_serialize_standard_json_with_raw_string_effect_detail_excludes_enhanced
 
     # MBTA-specific enhanced fields should NOT be present in standard JSON
     assert "service_effect_text" not in alert, "service_effect_text should not be in standard JSON"
+    assert "recurrence_text" not in alert, "recurrence_text should not be in standard JSON"
     assert "timeframe_text" not in alert, "timeframe_text should not be in standard JSON"
     assert "activities" not in informed_entity, "activities should not be in standard JSON"
     assert "facility_id" not in informed_entity, "facility_id should not be in standard JSON"
