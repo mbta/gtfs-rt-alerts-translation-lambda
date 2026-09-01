@@ -22,7 +22,7 @@ dev = [
     "pytest>=8.0.0",
     "respx>=0.21.0",
     "ruff>=0.3.0",
-    "types-protobuf>=4.24.0",
+    "types-protobuf>=7.34.1.20260403",
     "vcrpy>=6.0.0",
 ]
 
